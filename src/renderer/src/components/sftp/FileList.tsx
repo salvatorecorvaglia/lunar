@@ -8,7 +8,8 @@ import {
   FileArchive,
   ChevronUp,
   ChevronDown,
-  Link2
+  Link2,
+  FolderOpen
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -52,7 +53,7 @@ function getFileIcon(entry: FileEntry) {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return '—'
+  if (bytes === 0) return '\u2014'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
   return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`
@@ -82,7 +83,6 @@ export function FileList({
 
   const sorted = useMemo(() => {
     return [...entries].sort((a, b) => {
-      // Directories always first
       if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
 
       const mul = sortDir === 'asc' ? 1 : -1
@@ -112,8 +112,9 @@ export function FileList({
 
   if (entries.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-        {emptyMessage}
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+        <FolderOpen className="h-8 w-8 text-muted-foreground/20" />
+        <span className="text-xs">{emptyMessage}</span>
       </div>
     )
   }
@@ -121,22 +122,22 @@ export function FileList({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center border-b border-border bg-muted/30 text-[11px] font-medium text-muted-foreground no-select">
+      <div className="flex items-center border-b border-border/60 bg-muted/20 text-[11px] font-medium text-muted-foreground/80 no-select">
         <button
           onClick={() => handleSort('name')}
-          className="flex flex-1 items-center gap-1 px-3 py-1.5 hover:text-foreground transition-colors"
+          className="flex flex-1 items-center gap-1 px-3 py-1.5 hover:text-foreground cursor-pointer"
         >
           Name <SortIcon field="name" />
         </button>
         <button
           onClick={() => handleSort('size')}
-          className="flex w-20 items-center justify-end gap-1 px-2 py-1.5 hover:text-foreground transition-colors"
+          className="flex w-20 items-center justify-end gap-1 px-2 py-1.5 hover:text-foreground cursor-pointer"
         >
           Size <SortIcon field="size" />
         </button>
         <button
           onClick={() => handleSort('modifiedAt')}
-          className="flex w-36 items-center justify-end gap-1 px-3 py-1.5 hover:text-foreground transition-colors"
+          className="flex w-36 items-center justify-end gap-1 px-3 py-1.5 hover:text-foreground cursor-pointer"
         >
           Modified <SortIcon field="modifiedAt" />
         </button>
@@ -148,22 +149,26 @@ export function FileList({
           <div
             key={entry.name}
             className={cn(
-              'flex items-center text-xs cursor-pointer hover:bg-accent/50 transition-colors',
-              selection.has(entry.name) && 'bg-accent'
+              'group flex items-center text-xs cursor-pointer border-b border-transparent',
+              selection.has(entry.name)
+                ? 'bg-accent/80 border-b-border/30'
+                : 'hover:bg-accent/30'
             )}
             onClick={() => onSelect(entry.name)}
             onDoubleClick={() => onOpen(entry)}
             draggable={!!onDragStart}
             onDragStart={(e) => onDragStart?.(entry, e)}
           >
-            <div className="flex flex-1 items-center gap-2 truncate px-3 py-1.5">
+            <div className="flex flex-1 items-center gap-2 truncate px-3 py-[7px]">
               {getFileIcon(entry)}
-              <span className="truncate">{entry.name}</span>
+              <span className={cn('truncate', entry.isDirectory && 'font-medium')}>
+                {entry.name}
+              </span>
             </div>
-            <div className="w-20 px-2 py-1.5 text-right text-muted-foreground">
-              {entry.isDirectory ? '—' : formatSize(entry.size)}
+            <div className="w-20 px-2 py-[7px] text-right text-muted-foreground/70 tabular-nums">
+              {entry.isDirectory ? '\u2014' : formatSize(entry.size)}
             </div>
-            <div className="w-36 px-3 py-1.5 text-right text-muted-foreground">
+            <div className="w-36 px-3 py-[7px] text-right text-muted-foreground/70 tabular-nums">
               {formatDate(entry.modifiedAt)}
             </div>
           </div>

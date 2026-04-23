@@ -1,94 +1,112 @@
-import { Terminal, FolderOpen, Plus, Zap, Command } from 'lucide-react'
+import { Terminal, FolderOpen, Plus, Zap, Command, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useConnectionStore } from '@/stores/connection-store'
+import { useUIStore } from '@/stores/ui-store'
+
+const stagger = {
+  animate: { transition: { staggerChildren: 0.08 } }
+}
+
+const fadeUp = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } }
+}
+
+const actions = [
+  {
+    key: 'new',
+    icon: Plus,
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10 group-hover:bg-blue-500/15',
+    title: 'New Connection',
+    desc: 'Set up an SSH connection to a server'
+  },
+  {
+    key: 'quick',
+    icon: Zap,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-500/10 group-hover:bg-emerald-500/15',
+    title: 'Quick Connect',
+    desc: 'Connect with user@host:port format'
+  },
+  {
+    key: 'sftp',
+    icon: FolderOpen,
+    color: 'text-violet-500',
+    bg: 'bg-violet-500/10 group-hover:bg-violet-500/15',
+    title: 'SFTP Browser',
+    desc: 'Browse and transfer files over SSH'
+  }
+] as const
 
 export function WelcomeView() {
   const { openCreateForm } = useConnectionStore()
+  const { setActiveView } = useUIStore()
+
+  const handleAction = (key: string) => {
+    if (key === 'new') openCreateForm()
+    else if (key === 'sftp') setActiveView('sftp')
+  }
 
   return (
     <div className="flex h-full items-center justify-center bg-background">
+      {/* Subtle radial glow behind content */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="h-[500px] w-[500px] rounded-full bg-gradient-to-br from-indigo-500/[0.04] to-violet-500/[0.04] blur-3xl" />
+      </div>
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="max-w-md text-center"
+        initial="initial"
+        animate="animate"
+        variants={stagger}
+        className="relative max-w-md text-center"
       >
         {/* Logo */}
-        <motion.div
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/20"
-        >
-          <Terminal className="h-8 w-8 text-white" />
+        <motion.div variants={fadeUp} className="mx-auto mb-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/25">
+            <Terminal className="h-8 w-8 text-white" />
+          </div>
         </motion.div>
 
-        <h1 className="text-2xl font-bold text-foreground">Welcome to Lunar</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <motion.h1 variants={fadeUp} className="text-2xl font-bold tracking-tight text-foreground">
+          Welcome to Lunar
+        </motion.h1>
+        <motion.p variants={fadeUp} className="mt-2 text-sm text-muted-foreground">
           A modern SSH terminal and SFTP file manager
-        </p>
+        </motion.p>
 
         {/* Quick Actions */}
-        <div className="mt-8 grid gap-3">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => openCreateForm()}
-            className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-ring hover:bg-accent"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-              <Plus className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-foreground">New Connection</div>
-              <div className="text-xs text-muted-foreground">
-                Set up an SSH connection to a server
+        <motion.div variants={fadeUp} className="mt-8 grid gap-2.5">
+          {actions.map((action) => (
+            <motion.button
+              key={action.key}
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.985 }}
+              onClick={() => handleAction(action.key)}
+              className="group flex w-full items-center gap-3.5 rounded-xl border border-border/80 bg-card/80 p-4 text-left hover:border-border hover:bg-accent/50 cursor-pointer"
+            >
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.bg}`}>
+                <action.icon className={`h-5 w-5 ${action.color}`} />
               </div>
-            </div>
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-ring hover:bg-accent"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-              <Zap className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-foreground">Quick Connect</div>
-              <div className="text-xs text-muted-foreground">
-                Connect with user@host:port format
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-foreground">{action.title}</div>
+                <div className="text-xs text-muted-foreground/80">{action.desc}</div>
               </div>
-            </div>
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-ring hover:bg-accent"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
-              <FolderOpen className="h-5 w-5 text-violet-500" />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-foreground">SFTP Browser</div>
-              <div className="text-xs text-muted-foreground">
-                Browse and transfer files over SSH
-              </div>
-            </div>
-          </motion.button>
-        </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/30 group-hover:text-muted-foreground/70" />
+            </motion.button>
+          ))}
+        </motion.div>
 
         {/* Keyboard shortcut hint */}
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <Command className="h-3 w-3" />
-          <span>+</span>
-          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-            K
+        <motion.div
+          variants={fadeUp}
+          className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground/70"
+        >
+          <kbd className="inline-flex items-center gap-0.5 rounded-md border border-border/80 bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            <Command className="h-2.5 w-2.5" />K
           </kbd>
-          <span className="ml-1">to open command palette</span>
-        </div>
+          <span>to open command palette</span>
+        </motion.div>
       </motion.div>
     </div>
   )

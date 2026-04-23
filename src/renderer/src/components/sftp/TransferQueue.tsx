@@ -37,16 +37,19 @@ export function TransferQueue() {
   const completedCount = items.filter((t) => t.status === 'completed').length
 
   return (
-    <div className="border-t border-border bg-card">
+    <div className="border-t border-border/60 bg-card/80">
       {/* Toggle bar */}
       <button
         onClick={toggleQueueExpanded}
-        className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors no-select"
+        className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 no-select cursor-pointer"
       >
         <div className="flex items-center gap-2">
           <Upload className="h-3.5 w-3.5" />
-          <span>
-            Transfers: {activeCount} active, {completedCount} completed
+          <span className="font-medium">
+            {activeCount > 0 ? `${activeCount} active` : ''}
+            {activeCount > 0 && completedCount > 0 ? ', ' : ''}
+            {completedCount > 0 ? `${completedCount} completed` : ''}
+            {activeCount === 0 && completedCount === 0 ? 'No transfers' : ''}
           </span>
         </div>
         {queueExpanded ? (
@@ -71,10 +74,10 @@ export function TransferQueue() {
             </div>
 
             {completedCount > 0 && (
-              <div className="flex justify-end border-t border-border px-3 py-1">
+              <div className="flex justify-end border-t border-border/60 px-3 py-1">
                 <button
                   onClick={clearCompleted}
-                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <Trash2 className="h-3 w-3" />
                   Clear completed
@@ -100,7 +103,7 @@ function TransferRow({ item, onRemove }: { item: TransferItem; onRemove: () => v
   }
 
   return (
-    <div className="flex items-center gap-2 border-t border-border px-3 py-1.5">
+    <div className="flex items-center gap-2.5 border-t border-border/40 px-3 py-2">
       {/* Icon */}
       {item.type === 'upload' ? (
         <Upload className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
@@ -110,20 +113,23 @@ function TransferRow({ item, onRemove }: { item: TransferItem; onRemove: () => v
 
       {/* Info */}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-xs text-foreground">{item.fileName}</div>
-        <div className="flex items-center gap-2">
+        <div className="truncate text-xs font-medium text-foreground">{item.fileName}</div>
+        <div className="mt-1 flex items-center gap-2">
           {/* Progress bar */}
           {isInProgress && (
-            <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
+            <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
               <div
-                className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                className={cn(
+                  'h-full rounded-full transition-all duration-300',
+                  item.type === 'upload' ? 'bg-blue-500' : 'bg-emerald-500'
+                )}
                 style={{ width: `${percent}%` }}
               />
             </div>
           )}
-          <span className="text-[10px] text-muted-foreground flex-shrink-0">
+          <span className="text-[10px] text-muted-foreground flex-shrink-0 tabular-nums">
             {item.status === 'active'
-              ? `${percent}% · ${formatSpeed(item.bytesPerSec)}`
+              ? `${percent}% \u00b7 ${formatSpeed(item.bytesPerSec)}`
               : item.status === 'queued'
                 ? 'Queued'
                 : item.status === 'completed'
@@ -144,7 +150,8 @@ function TransferRow({ item, onRemove }: { item: TransferItem; onRemove: () => v
       <button
         onClick={handleRemove}
         title={isInProgress ? 'Cancel transfer' : 'Remove'}
-        className="flex-shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+        className="flex-shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-foreground cursor-pointer"
+        aria-label={isInProgress ? 'Cancel transfer' : 'Remove'}
       >
         <X className="h-3 w-3" />
       </button>

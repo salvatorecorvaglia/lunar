@@ -1,18 +1,17 @@
 import { useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
+import { Terminal, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useConnectionStore } from '@/stores/connection-store'
-import { useConnections } from '@/hooks/use-connections'
+import { terminalThemes } from '@/themes/terminal'
 import { TerminalTabs } from './TerminalTabs'
 import { SplitPane } from './SplitPane'
 
 export function TerminalView() {
-  const { splitTree, activeTabId, sessions } = useTerminalStore()
-  const { data: connections = [] } = useConnections()
+  const { splitTree, terminalTheme } = useTerminalStore()
 
   const handleNewTab = useCallback(() => {
-    // Open connection form or use last connection
     const { activeConnectionId } = useConnectionStore.getState()
     if (activeConnectionId) {
       connectToHost(activeConnectionId)
@@ -21,15 +20,30 @@ export function TerminalView() {
     }
   }, [])
 
+  const themeBg = terminalThemes[terminalTheme]?.background || '#282a36'
+
   return (
     <div className="flex h-full flex-col">
       <TerminalTabs onNewTab={handleNewTab} />
-      <div className="flex-1 overflow-hidden bg-[#282a36]">
+      <div className="flex-1 overflow-hidden" style={{ backgroundColor: themeBg }}>
         {splitTree ? (
           <SplitPane node={splitTree} />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            No active terminal sessions
+          <div className="flex h-full flex-col items-center justify-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.06]">
+              <Terminal className="h-7 w-7 text-white/30" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-white/40">No active sessions</p>
+              <p className="mt-1 text-xs text-white/20">Select a connection from the sidebar to begin</p>
+            </div>
+            <button
+              onClick={handleNewTab}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-medium text-white/50 hover:bg-white/[0.08] hover:text-white/70 cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Session
+            </button>
           </div>
         )}
       </div>
@@ -41,7 +55,6 @@ export async function connectToHost(connectionId: string): Promise<void> {
   const sessionId = uuidv4()
   const { addSession, updateSessionStatus } = useTerminalStore.getState()
 
-  // Get connection info for display
   let connectionName = 'Unknown'
   try {
     const conn = await window.api.connections.get(connectionId)
@@ -58,7 +71,6 @@ export async function connectToHost(connectionId: string): Promise<void> {
     title: connectionName
   })
 
-  // Listen for status updates for this session
   const cleanupStatus = window.api.ssh.onStatus((event) => {
     if (event.sessionId === sessionId) {
       updateSessionStatus(sessionId, event.status)

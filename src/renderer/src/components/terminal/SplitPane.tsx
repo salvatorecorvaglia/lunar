@@ -20,6 +20,7 @@ function SplitContainer({
   node: Extract<PaneNode, { type: 'split' }>
 }) {
   const [ratio, setRatio] = useState(node.ratio)
+  const [dragging, setDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
 
@@ -29,6 +30,7 @@ function SplitContainer({
     (e: React.MouseEvent) => {
       e.preventDefault()
       isDragging.current = true
+      setDragging(true)
 
       const onMouseMove = (e: MouseEvent) => {
         if (!isDragging.current || !containerRef.current) return
@@ -43,6 +45,7 @@ function SplitContainer({
 
       const onMouseUp = () => {
         isDragging.current = false
+        setDragging(false)
         document.removeEventListener('mousemove', onMouseMove)
         document.removeEventListener('mouseup', onMouseUp)
         document.body.style.cursor = ''
@@ -71,13 +74,29 @@ function SplitContainer({
         <SplitPane node={node.children[0]} />
       </div>
 
-      {/* Divider */}
+      {/* Divider with wider hit area */}
       <div
-        onMouseDown={handleMouseDown}
-        className={`flex-shrink-0 bg-border hover:bg-ring transition-colors ${
-          isHorizontal ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'
+        className={`relative flex-shrink-0 ${
+          isHorizontal ? 'w-px cursor-col-resize' : 'h-px cursor-row-resize'
         }`}
-      />
+      >
+        {/* Visual line */}
+        <div
+          className={`absolute inset-0 bg-white/[0.08] ${
+            dragging ? 'bg-primary/60' : 'hover:bg-primary/40'
+          }`}
+          style={{ transition: 'background-color 150ms' }}
+        />
+        {/* Invisible hit area */}
+        <div
+          onMouseDown={handleMouseDown}
+          className={`absolute ${
+            isHorizontal
+              ? '-left-1.5 -right-1.5 inset-y-0 cursor-col-resize'
+              : '-top-1.5 -bottom-1.5 inset-x-0 cursor-row-resize'
+          }`}
+        />
+      </div>
 
       <div
         style={{

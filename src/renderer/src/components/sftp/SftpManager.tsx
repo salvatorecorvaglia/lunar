@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import { FolderOpen, Unplug } from 'lucide-react'
+import { FolderOpen, Unplug, Plus } from 'lucide-react'
 import { useSftpStore } from '@/stores/sftp-store'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useTransferStore } from '@/stores/transfer-store'
+import { useConnectionStore } from '@/stores/connection-store'
 import { useSftpDirectory, useLocalDirectory, useInvalidateSftp, useInvalidateLocalDir } from '@/hooks/use-sftp'
 import { FilePane } from './FilePane'
 import { TransferQueue } from './TransferQueue'
 import { FilePreview } from './FilePreview'
-import { cn } from '@/lib/utils'
 
 export function SftpManager() {
   const {
@@ -25,10 +25,11 @@ export function SftpManager() {
     setPreviewFile
   } = useSftpStore()
 
-  const { sessions, tabOrder } = useTerminalStore()
+  const { sessions } = useTerminalStore()
   const invalidateSftp = useInvalidateSftp()
   const invalidateLocal = useInvalidateLocalDir()
   const [splitRatio, setSplitRatio] = useState(0.5)
+  const [resizing, setResizing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Auto-select first connected session if none selected
@@ -72,7 +73,6 @@ export function SftpManager() {
           remotePath: remoteSrc,
           localPath: localDest
         })
-        // Add to store for immediate UI feedback
         addTransfer({
           id: transferId,
           type: 'download',
@@ -143,6 +143,7 @@ export function SftpManager() {
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault()
+      setResizing(true)
       const onMouseMove = (e: MouseEvent) => {
         if (!containerRef.current) return
         const rect = containerRef.current.getBoundingClientRect()
@@ -150,6 +151,7 @@ export function SftpManager() {
         setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)))
       }
       const onMouseUp = () => {
+        setResizing(false)
         document.removeEventListener('mousemove', onMouseMove)
         document.removeEventListener('mouseup', onMouseUp)
         document.body.style.cursor = ''
@@ -165,12 +167,23 @@ export function SftpManager() {
 
   if (!sftpSessionId || !sessions.get(sftpSessionId)) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-        <Unplug className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-sm">Connect to a server to browse files</p>
-        <p className="text-xs text-muted-foreground/70">
-          Use the sidebar to connect, then switch to SFTP view
-        </p>
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
+          <Unplug className="h-7 w-7 text-muted-foreground/30" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-medium text-foreground/60">No active connection</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">
+            Connect to a server first, then switch to SFTP view
+          </p>
+        </div>
+        <button
+          onClick={() => useConnectionStore.getState().openCreateForm()}
+          className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New Connection
+        </button>
       </div>
     )
   }
@@ -198,10 +211,16 @@ export function SftpManager() {
         </div>
 
         {/* Resize handle */}
-        <div
-          onMouseDown={handleResizeMouseDown}
-          className="w-1 flex-shrink-0 cursor-col-resize bg-border hover:bg-ring transition-colors"
-        />
+        <div className="relative w-px flex-shrink-0 cursor-col-resize">
+          <div
+            className={`absolute inset-0 bg-border ${resizing ? 'bg-primary/60' : 'hover:bg-primary/40'}`}
+            style={{ transition: 'background-color 150ms' }}
+          />
+          <div
+            onMouseDown={handleResizeMouseDown}
+            className="absolute -left-1.5 -right-1.5 inset-y-0 cursor-col-resize"
+          />
+        </div>
 
         {/* Remote pane */}
         <div style={{ width: `${(1 - splitRatio) * 100}%` }} className="overflow-hidden">

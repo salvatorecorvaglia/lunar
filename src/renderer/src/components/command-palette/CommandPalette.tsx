@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -10,8 +10,7 @@ import {
   Sun,
   PanelLeft,
   Palette,
-  Server,
-  Wifi
+  Server
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
@@ -30,6 +29,18 @@ interface Command {
   keywords?: string[]
 }
 
+const overlayVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 }
+}
+
+const dialogVariants = {
+  initial: { opacity: 0, y: -10, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] } },
+  exit: { opacity: 0, y: -10, scale: 0.98, transition: { duration: 0.1 } }
+}
+
 export function CommandPalette() {
   const { commandPaletteOpen, setCommandPaletteOpen, setActiveView, toggleSidebar, theme, setTheme, setSettingsOpen } =
     useUIStore()
@@ -37,10 +48,13 @@ export function CommandPalette() {
   const { openCreateForm } = useConnectionStore()
   const { data: connections = [] } = useConnections()
   const [query, setQuery] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (commandPaletteOpen) {
       setQuery('')
+      setSelectedIndex(0)
     }
   }, [commandPaletteOpen])
 
@@ -121,7 +135,6 @@ export function CommandPalette() {
       }
     ]
 
-    // Add saved connections as commands
     for (const conn of connections) {
       cmds.push({
         id: `connect-${conn.id}`,
@@ -163,11 +176,23 @@ export function CommandPalette() {
     return groups
   }, [filtered])
 
-  const [selectedIndex, setSelectedIndex] = useState(0)
-
   useEffect(() => {
     setSelectedIndex(0)
   }, [query])
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (!listRef.current) return
+    const selected = listRef.current.querySelector('[data-selected="true"]')
+    if (selected) {
+      selected.scrollIntoView({ block: 'nearest' })
+    }
+  }, [selectedIndex])
+
+  const executeCommand = (cmd: Command) => {
+    cmd.action()
+    setCommandPaletteOpen(false)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -179,8 +204,7 @@ export function CommandPalette() {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (filtered[selectedIndex]) {
-        filtered[selectedIndex].action()
-        setCommandPaletteOpen(false)
+        executeCommand(filtered[selectedIndex])
       }
     } else if (e.key === 'Escape') {
       setCommandPaletteOpen(false)
@@ -194,68 +218,73 @@ export function CommandPalette() {
       {commandPaletteOpen && (
         <>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            variants={overlayVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
             onClick={() => setCommandPaletteOpen(false)}
           />
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.98 }}
-            transition={{ duration: 0.15 }}
+            variants={dialogVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="fixed left-1/2 top-[20%] z-50 w-full max-w-lg -translate-x-1/2"
           >
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+            <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xl">
               {/* Search input */}
-              <div className="flex items-center border-b border-border px-3">
-                <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="flex items-center border-b border-border/60 px-3">
+                <Search className="h-4 w-4 text-muted-foreground/60 flex-shrink-0" />
                 <input
                   type="text"
                   placeholder="Type a command..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="flex-1 border-none bg-transparent py-3 pl-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                  className="flex-1 border-none bg-transparent py-3 pl-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
                   autoFocus
                 />
               </div>
 
               {/* Results */}
-              <div className="max-h-[300px] overflow-y-auto p-1">
+              <div ref={listRef} className="max-h-[300px] overflow-y-auto p-1.5">
                 {filtered.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-muted-foreground">
+                  <div className="py-8 text-center text-xs text-muted-foreground/60">
                     No commands found
                   </div>
                 ) : (
                   Array.from(grouped.entries()).map(([category, cmds]) => (
                     <div key={category}>
-                      <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground">
+                      <div className="px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
                         {category}
                       </div>
                       {cmds.map((cmd) => {
                         const index = flatIndex++
+                        const isSelected = index === selectedIndex
                         return (
                           <button
                             key={cmd.id}
-                            onClick={() => {
-                              cmd.action()
-                              setCommandPaletteOpen(false)
-                            }}
+                            data-selected={isSelected}
+                            onClick={() => executeCommand(cmd)}
                             onMouseEnter={() => setSelectedIndex(index)}
                             className={cn(
-                              'flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition-colors',
-                              index === selectedIndex
+                              'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm cursor-pointer',
+                              isSelected
                                 ? 'bg-accent text-foreground'
-                                : 'text-muted-foreground hover:bg-accent/50'
+                                : 'text-muted-foreground'
                             )}
                           >
-                            <div className="flex-shrink-0 text-muted-foreground">{cmd.icon}</div>
+                            <div className={cn(
+                              'flex-shrink-0',
+                              isSelected ? 'text-foreground' : 'text-muted-foreground/60'
+                            )}>
+                              {cmd.icon}
+                            </div>
                             <div className="min-w-0 flex-1">
-                              <div className="text-sm">{cmd.label}</div>
+                              <div className="text-[13px]">{cmd.label}</div>
                               {cmd.description && (
-                                <div className="truncate text-xs text-muted-foreground">
+                                <div className="truncate text-[11px] text-muted-foreground/60">
                                   {cmd.description}
                                 </div>
                               )}
@@ -269,24 +298,24 @@ export function CommandPalette() {
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span>
-                    <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[10px]">
+              <div className="flex items-center justify-between border-t border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground/50">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <kbd className="rounded border border-border/60 bg-muted/50 px-1 py-px font-mono text-[10px]">
                       ↑↓
-                    </kbd>{' '}
+                    </kbd>
                     navigate
                   </span>
-                  <span>
-                    <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[10px]">
+                  <span className="flex items-center gap-1">
+                    <kbd className="rounded border border-border/60 bg-muted/50 px-1 py-px font-mono text-[10px]">
                       ↵
-                    </kbd>{' '}
+                    </kbd>
                     select
                   </span>
-                  <span>
-                    <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[10px]">
+                  <span className="flex items-center gap-1">
+                    <kbd className="rounded border border-border/60 bg-muted/50 px-1 py-px font-mono text-[10px]">
                       esc
-                    </kbd>{' '}
+                    </kbd>
                     close
                   </span>
                 </div>

@@ -2,6 +2,9 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ──────────────────────────────────────────────────
+   Design Tokens
+   ────────────────────────────────────────────────── */
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -9,7 +12,22 @@
   --radius-lg: 0.5rem;
   --radius-md: calc(var(--radius-lg) - 2px);
   --radius-sm: calc(var(--radius-lg) - 4px);
+  --radius-xl: 0.75rem;
 
+  /* Elevation / Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+  --shadow-glow: 0 0 20px rgb(99 102 241 / 0.15);
+
+  /* Animation durations */
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 350ms;
+
+  /* Light mode colors */
   --color-background: hsl(0 0% 100%);
   --color-foreground: hsl(240 10% 3.9%);
   --color-card: hsl(0 0% 100%);
@@ -29,6 +47,9 @@
   --color-border: hsl(240 5.9% 90%);
   --color-input: hsl(240 5.9% 90%);
   --color-ring: hsl(240 10% 3.9%);
+  --color-success: hsl(142 76% 36%);
+  --color-warning: hsl(38 92% 50%);
+  --color-info: hsl(217 91% 60%);
 
   --color-sidebar: hsl(0 0% 98%);
   --color-sidebar-foreground: hsl(240 5.3% 26.1%);
@@ -40,17 +61,15 @@
   --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
-/*
-  Dark mode overrides using the `.dark` class.
-  These are applied via Tailwind's `dark:` variant which is configured
-  to use the `.dark` class strategy.
-*/
+/* ──────────────────────────────────────────────────
+   Dark Mode
+   ────────────────────────────────────────────────── */
 .dark {
   --color-background: hsl(240 10% 3.9%);
   --color-foreground: hsl(0 0% 98%);
-  --color-card: hsl(240 10% 3.9%);
+  --color-card: hsl(240 6% 6%);
   --color-card-foreground: hsl(0 0% 98%);
-  --color-popover: hsl(240 10% 3.9%);
+  --color-popover: hsl(240 6% 6%);
   --color-popover-foreground: hsl(0 0% 98%);
   --color-primary: hsl(0 0% 98%);
   --color-primary-foreground: hsl(240 5.9% 10%);
@@ -65,8 +84,18 @@
   --color-border: hsl(240 3.7% 15.9%);
   --color-input: hsl(240 3.7% 15.9%);
   --color-ring: hsl(240 4.9% 83.9%);
+  --color-success: hsl(142 71% 45%);
+  --color-warning: hsl(38 92% 50%);
+  --color-info: hsl(217 91% 60%);
 
-  --color-sidebar: hsl(240 5.9% 10%);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.25), 0 2px 4px -2px rgb(0 0 0 / 0.15);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.35), 0 8px 10px -6px rgb(0 0 0 / 0.2);
+  --shadow-glow: 0 0 24px rgb(99 102 241 / 0.25);
+
+  --color-sidebar: hsl(240 6% 6%);
   --color-sidebar-foreground: hsl(240 4.8% 95.9%);
   --color-sidebar-primary: hsl(224.3 76.3% 48%);
   --color-sidebar-primary-foreground: hsl(0 0% 100%);
@@ -76,10 +105,12 @@
   --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
-/* Custom scrollbar */
+/* ──────────────────────────────────────────────────
+   Scrollbar (theme-aware)
+   ────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -87,59 +118,154 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(240 3.7% 25%);
-  border-radius: 4px;
+  background: var(--color-border);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(240 3.7% 35%);
+  background: var(--color-muted-foreground);
 }
 
-/* Disable text selection on UI elements (not terminal) */
+/* ──────────────────────────────────────────────────
+   Selection
+   ────────────────────────────────────────────────── */
 .no-select {
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Window drag region */
+/* ──────────────────────────────────────────────────
+   Window Drag
+   ────────────────────────────────────────────────── */
 .drag-region {
   -webkit-app-region: drag;
 }
-
 .no-drag {
   -webkit-app-region: no-drag;
 }
 
-/* Smooth transitions for theme changes */
-* {
-  transition-property: background-color, border-color;
-  transition-duration: 150ms;
-  transition-timing-function: ease;
+/* ──────────────────────────────────────────────────
+   Interaction Transitions (scoped, not global *)
+   ────────────────────────────────────────────────── */
+button,
+a,
+input,
+select,
+[role="button"],
+[data-interactive] {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: var(--duration-normal);
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Exclude terminal from theme transitions */
+/* Theme transitions only on containers */
+.theme-transition {
+  transition: background-color var(--duration-slow) ease, border-color var(--duration-slow) ease, color var(--duration-slow) ease;
+}
+
+/* Terminal: no transitions at all */
+.xterm,
 .xterm * {
   transition: none !important;
 }
 
-/* Form input base style */
+/* ──────────────────────────────────────────────────
+   Focus States
+   ────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--color-sidebar-ring);
+  outline-offset: 2px;
+}
+
+/* ──────────────────────────────────────────────────
+   Form Inputs
+   ────────────────────────────────────────────────── */
 .form-input {
   width: 100%;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
   background-color: var(--color-background);
-  padding: 0.375rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.8125rem;
+  line-height: 1.5;
   color: var(--color-foreground);
   outline: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .form-input::placeholder {
   color: var(--color-muted-foreground);
+  opacity: 0.6;
 }
 
 .form-input:focus {
-  border-color: var(--color-ring);
-  box-shadow: 0 0 0 1px var(--color-ring);
+  border-color: var(--color-sidebar-ring);
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.12);
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ──────────────────────────────────────────────────
+   Interactive Button Base
+   ────────────────────────────────────────────────── */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  padding: 0.375rem;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+}
+.btn-icon:hover {
+  background-color: var(--color-accent);
+  color: var(--color-foreground);
+}
+.btn-icon:active {
+  transform: scale(0.92);
+}
+
+/* ──────────────────────────────────────────────────
+   Reduced motion
+   ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────
+   Keyframes
+   ────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-muted) 25%, var(--color-accent) 50%, var(--color-muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
 }

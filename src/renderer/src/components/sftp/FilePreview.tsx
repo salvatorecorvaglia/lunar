@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, FileText, FileImage, FileCode } from 'lucide-react'
+import { X, FileImage, FileCode } from 'lucide-react'
 import { useSftpStore } from '@/stores/sftp-store'
 
 function detectLanguage(name: string): string {
@@ -33,42 +34,67 @@ function isImageType(type: string): boolean {
   return ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp'].includes(type)
 }
 
+const overlayVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 }
+}
+
+const dialogVariants = {
+  initial: { opacity: 0, scale: 0.97 },
+  animate: { opacity: 1, scale: 1, transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] } },
+  exit: { opacity: 0, scale: 0.97, transition: { duration: 0.15 } }
+}
+
 export function FilePreview() {
   const { previewFile, setPreviewFile } = useSftpStore()
+
+  // Close on Escape
+  useEffect(() => {
+    if (!previewFile) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewFile(null)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [previewFile, setPreviewFile])
 
   return (
     <AnimatePresence>
       {previewFile && (
         <>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            variants={overlayVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             onClick={() => setPreviewFile(null)}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-8 z-50 flex flex-col rounded-xl border border-border bg-card shadow-2xl overflow-hidden"
+            variants={dialogVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-8 z-50 flex flex-col rounded-xl border border-border/80 bg-card shadow-xl overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+              <div className="flex items-center gap-2.5">
                 {isImageType(previewFile.type) ? (
                   <FileImage className="h-4 w-4 text-pink-400" />
                 ) : (
                   <FileCode className="h-4 w-4 text-green-400" />
                 )}
                 <span className="text-sm font-medium text-foreground">{previewFile.name}</span>
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <span className="rounded-md bg-muted/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   {detectLanguage(previewFile.name)}
                 </span>
               </div>
               <button
                 onClick={() => setPreviewFile(null)}
-                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="btn-icon"
+                aria-label="Close preview"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -77,15 +103,15 @@ export function FilePreview() {
             {/* Content */}
             <div className="flex-1 overflow-auto p-4">
               {isImageType(previewFile.type) ? (
-                <div className="flex h-full items-center justify-center">
+                <div className="flex h-full items-center justify-center bg-[repeating-conic-gradient(#80808012_0%_25%,transparent_0%_50%)] bg-[length:16px_16px]">
                   <img
                     src={`data:${previewFile.type};base64,${previewFile.content}`}
                     alt={previewFile.name}
-                    className="max-h-full max-w-full object-contain"
+                    className="max-h-full max-w-full object-contain rounded"
                   />
                 </div>
               ) : (
-                <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground">
+                <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground/90">
                   {previewFile.content}
                 </pre>
               )}
