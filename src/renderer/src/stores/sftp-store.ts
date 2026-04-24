@@ -5,9 +5,11 @@ interface SftpState {
   remotePath: string
   localSelection: Set<string>
   remoteSelection: Set<string>
+  showHiddenFiles: boolean
   previewFile: { name: string; content: string; type: string } | null
   sftpSessionId: string | null
 
+  toggleHiddenFiles: () => void
   setLocalPath: (path: string) => void
   setRemotePath: (path: string) => void
   setLocalSelection: (selection: Set<string>) => void
@@ -24,9 +26,11 @@ export const useSftpStore = create<SftpState>((set) => ({
   remotePath: '/',
   localSelection: new Set(),
   remoteSelection: new Set(),
+  showHiddenFiles: false,
   previewFile: null,
   sftpSessionId: null,
 
+  toggleHiddenFiles: () => set((s) => ({ showHiddenFiles: !s.showHiddenFiles })),
   setLocalPath: (path) => set({ localPath: path, localSelection: new Set() }),
   setRemotePath: (path) => set({ remotePath: path, remoteSelection: new Set() }),
   setLocalSelection: (selection) => set({ localSelection: selection }),

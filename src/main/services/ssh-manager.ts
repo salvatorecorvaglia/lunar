@@ -1,10 +1,12 @@
 import { Client, type ClientChannel, type ConnectConfig } from 'ssh2'
 import { readFile } from 'fs/promises'
+import { v4 as uuidv4 } from 'uuid'
 import { IPC } from '@shared/constants'
 import { emitToRenderer } from './emit'
 import type { SessionStatus } from '@shared/types/terminal'
 import { getDatabase, type ConnectionRow } from './database'
 import { retrieveCredential } from './credential-store'
+import { verifyHostKey } from './host-key-store'
 
 interface StreamListeners {
   onData: (data: Buffer) => void
@@ -21,10 +23,17 @@ interface SshSession {
   reconnectAttempts: number
   reconnectTimer: ReturnType<typeof setTimeout> | null
   _streamListeners?: StreamListeners
+  historyId?: string
 }
 
 class SshManager {
   private sessions = new Map<string, SshSession>()
+  private onDisconnectCallbacks: ((sessionId: string) => void)[] = []
+
+  /** Register a callback invoked when a session disconnects or begins reconnecting. */
+  onSessionDisconnect(cb: (sessionId: string) => void): void {
+    this.onDisconnectCallbacks.push(cb)
+  }
 
   private setStatus(session: SshSession, status: SessionStatus): void {
     session.status = status
@@ -67,7 +76,17 @@ class SshManager {
       username: row.username,
       keepaliveInterval: 10000,
       keepaliveCountMax: 3,
-      readyTimeout: 30000
+      readyTimeout: 30000,
+      hostVerifier: (key: Buffer) => {
+        const result = verifyHostKey(row.host, row.port, key, 'ssh-rsa')
+        if (!result.trusted) {
+          emitToRenderer(IPC.SSH_ON_ERROR, {
+            sessionId,
+            error: `Host key verification failed for ${row.host}:${row.port}. The server key has changed — this could indicate a MITM attack.`
+          })
+        }
+        return result.trusted
+      }
     }
 
     // Set up auth
@@ -102,6 +121,17 @@ class SshManager {
           Math.floor(Date.now() / 1000),
           connectionId
         )
+
+        // Record connection history
+        const historyId = uuidv4()
+        session.historyId = historyId
+        try {
+          db.prepare(
+            'INSERT INTO connection_history (id, connection_id) VALUES (?, ?)'
+          ).run(historyId, connectionId)
+        } catch {
+          // History table may not exist on older DBs before migration runs
+        }
 
         client.shell({ term: 'xterm-256color', cols: 80, rows: 24 }, (err, stream) => {
           if (err) {
@@ -191,6 +221,11 @@ class SshManager {
     this.setStatus(session, 'disconnected')
     emitToRenderer(IPC.SSH_ON_CLOSE, { sessionId })
 
+    // Notify listeners (e.g. SFTP cache cleanup)
+    for (const cb of this.onDisconnectCallbacks) {
+      cb(sessionId)
+    }
+
     // Auto-reconnect
     this.attemptReconnect(sessionId)
   }
@@ -268,6 +303,19 @@ class SshManager {
       session.client.end()
     } catch (err) {
       console.error(`[SSH] Error closing session ${sessionId}:`, err)
+    }
+
+    // Record disconnect in history
+    if (session.historyId) {
+      try {
+        const db = getDatabase()
+        const now = Math.floor(Date.now() / 1000)
+        db.prepare(
+          'UPDATE connection_history SET disconnected_at = ?, duration_secs = (? - connected_at) WHERE id = ?'
+        ).run(now, now, session.historyId)
+      } catch {
+        // History recording is best-effort
+      }
     }
 
     session.status = 'disconnected'

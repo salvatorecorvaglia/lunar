@@ -67,11 +67,13 @@ export const useUIStore = create<UIState>((set, get) => ({
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setTheme: (theme) => {
     applyTheme(theme)
+    window.api.settings.set('theme', JSON.stringify(theme))
     set({ theme })
   },
   toggleTheme: () => {
     const next = get().theme === 'dark' ? 'light' : 'dark'
     applyTheme(next)
+    window.api.settings.set('theme', JSON.stringify(next))
     set({ theme: next })
   },
   setActiveView: (view) => set({ activeView: view }),

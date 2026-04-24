@@ -10,18 +10,15 @@ import {
   ChevronUp,
   ChevronDown,
   Link2,
-  FolderOpen
+  FolderOpen,
+  Pencil,
+  Trash2,
+  Copy,
+  Eye
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-interface FileEntry {
-  name: string
-  path: string
-  size: number
-  modifiedAt: number
-  isDirectory: boolean
-  isSymlink?: boolean
-}
+import type { FileEntry } from '@shared/types/sftp'
+import { ContextMenu, type ContextMenuItem } from '@/components/common/ContextMenu'
 
 type SortField = 'name' | 'size' | 'modifiedAt'
 type SortDir = 'asc' | 'desc'
@@ -32,6 +29,10 @@ interface FileListProps {
   onSelect: (name: string) => void
   onOpen: (entry: FileEntry) => void
   onDragStart?: (entry: FileEntry, e: React.DragEvent) => void
+  onRename?: (entry: FileEntry) => void
+  onDelete?: (entry: FileEntry) => void
+  onCopyPath?: (entry: FileEntry) => void
+  onPreview?: (entry: FileEntry) => void
   emptyMessage?: string
 }
 
@@ -86,9 +87,9 @@ function getFileIcon(entry: FileEntry) {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return '\u2014'
+  if (bytes <= 0) return '\u2014'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
   return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`
 }
 
@@ -114,6 +115,10 @@ export function FileList({
   onSelect,
   onOpen,
   onDragStart,
+  onRename,
+  onDelete,
+  onCopyPath,
+  onPreview,
   emptyMessage = 'No files'
 }: FileListProps) {
   const [sortField, setSortField] = useState<SortField>('name')
@@ -202,7 +207,21 @@ export function FileList({
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const entry = sorted[virtualRow.index]
-            return (
+            const contextItems: ContextMenuItem[] = [
+              ...(!entry.isDirectory && onPreview
+                ? [{ label: 'Preview', icon: <Eye className="h-3.5 w-3.5" />, onClick: () => onPreview(entry) }]
+                : []),
+              ...(onCopyPath
+                ? [{ label: 'Copy Path', icon: <Copy className="h-3.5 w-3.5" />, onClick: () => onCopyPath(entry) }]
+                : []),
+              ...(onRename
+                ? [{ label: 'Rename', icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onRename(entry), separator: true }]
+                : []),
+              ...(onDelete
+                ? [{ label: 'Delete', icon: <Trash2 className="h-3.5 w-3.5" />, onClick: () => onDelete(entry), destructive: true }]
+                : [])
+            ]
+            const row = (
               <div
                 key={entry.name}
                 role="button"
@@ -247,6 +266,9 @@ export function FileList({
                 </div>
               </div>
             )
+            return contextItems.length > 0 ? (
+              <ContextMenu key={entry.name} items={contextItems}>{row}</ContextMenu>
+            ) : row
           })}
         </div>
       </div>

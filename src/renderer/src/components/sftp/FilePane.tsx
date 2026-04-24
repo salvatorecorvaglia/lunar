@@ -1,16 +1,10 @@
-import { useCallback, useState } from 'react'
-import { ChevronRight, Home, RefreshCw, ArrowUp } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { ChevronRight, Home, RefreshCw, ArrowUp, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FileList } from './FileList'
+import type { FileEntry } from '@shared/types/sftp'
 
-export interface FileEntry {
-  name: string
-  path: string
-  size: number
-  modifiedAt: number
-  isDirectory: boolean
-  isSymlink?: boolean
-}
+export type { FileEntry }
 
 interface FilePaneProps {
   title: string
@@ -24,6 +18,13 @@ interface FilePaneProps {
   onRefresh: () => void
   onDragStart?: (entry: FileEntry, e: React.DragEvent) => void
   onDrop?: (e: React.DragEvent) => void
+  onFileOpen?: (entry: FileEntry) => void
+  onRename?: (entry: FileEntry) => void
+  onDelete?: (entry: FileEntry) => void
+  onCopyPath?: (entry: FileEntry) => void
+  onPreview?: (entry: FileEntry) => void
+  showHidden?: boolean
+  onToggleHidden?: () => void
   side: 'local' | 'remote'
 }
 
@@ -52,10 +53,22 @@ export function FilePane({
   onRefresh,
   onDragStart,
   onDrop,
+  onFileOpen,
+  onRename,
+  onDelete,
+  onCopyPath,
+  onPreview,
+  showHidden = true,
+  onToggleHidden,
   side
 }: FilePaneProps) {
   const breadcrumbs = splitBreadcrumbs(path)
   const [dragOver, setDragOver] = useState(false)
+
+  const visibleEntries = useMemo(
+    () => (showHidden ? entries : entries.filter((e) => !e.name.startsWith('.'))),
+    [entries, showHidden]
+  )
 
   const navigateUp = useCallback(() => {
     const parent = path.split('/').slice(0, -1).join('/') || '/'
@@ -66,9 +79,11 @@ export function FilePane({
     (entry: FileEntry) => {
       if (entry.isDirectory) {
         onPathChange(entry.path)
+      } else {
+        onFileOpen?.(entry)
       }
     },
-    [onPathChange]
+    [onPathChange, onFileOpen]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -113,6 +128,16 @@ export function FilePane({
           </span>
         </div>
         <div className="flex items-center gap-0.5">
+          {onToggleHidden && (
+            <button
+              onClick={onToggleHidden}
+              className="btn-icon !p-1"
+              title={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
+              aria-label={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
+            >
+              {showHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </button>
+          )}
           <button onClick={navigateUp} className="btn-icon !p-1" title="Go up" aria-label="Go up">
             <ArrowUp className="h-3.5 w-3.5" />
           </button>
@@ -166,11 +191,15 @@ export function FilePane({
           </div>
         ) : (
           <FileList
-            entries={entries}
+            entries={visibleEntries}
             selection={selection}
             onSelect={onSelect}
             onOpen={handleOpen}
             onDragStart={onDragStart}
+            onRename={onRename}
+            onDelete={onDelete}
+            onCopyPath={onCopyPath}
+            onPreview={onPreview}
             emptyMessage={isLoading ? 'Loading...' : 'Empty directory'}
           />
         )}

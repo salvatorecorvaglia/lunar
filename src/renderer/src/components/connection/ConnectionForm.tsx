@@ -14,7 +14,8 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Check
+  Check,
+  FolderClosed
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useConnectionStore } from '@/stores/connection-store'
@@ -426,6 +427,21 @@ export function ConnectionForm() {
                     ))}
                   </div>
                 </div>
+
+                {/* Folder / Group */}
+                <FormField
+                  label="Group"
+                  icon={<FolderClosed className="h-3.5 w-3.5" />}
+                  optional
+                >
+                  <input
+                    type="text"
+                    value={folder === 'default' ? '' : folder}
+                    onChange={(e) => setFolder(e.target.value || 'default')}
+                    placeholder="default"
+                    className="form-input"
+                  />
+                </FormField>
 
                 {/* Startup Command */}
                 <FormField

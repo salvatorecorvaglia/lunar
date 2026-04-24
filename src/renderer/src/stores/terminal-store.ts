@@ -15,6 +15,8 @@ interface TerminalState {
   activeTabId: string | null
   splitTree: PaneNode | null
   terminalTheme: TerminalThemeName
+  fontSize: number
+  scrollback: number
 
   addSession: (session: TerminalSession) => void
   removeSession: (sessionId: string) => void
@@ -23,6 +25,8 @@ interface TerminalState {
   setTabOrder: (order: string[]) => void
   setSplitTree: (tree: PaneNode | null) => void
   setTerminalTheme: (theme: TerminalThemeName) => void
+  setFontSize: (size: number) => void
+  setScrollback: (lines: number) => void
   closeTab: (sessionId: string) => void
 }
 
@@ -32,6 +36,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   activeTabId: null,
   splitTree: null,
   terminalTheme: 'dracula',
+  fontSize: 14,
+  scrollback: 10000,
 
   addSession: (session) =>
     set((s) => {
@@ -81,6 +87,8 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   setSplitTree: (tree) => set({ splitTree: tree }),
 
   setTerminalTheme: (theme) => set({ terminalTheme: theme }),
+  setFontSize: (size) => set({ fontSize: size }),
+  setScrollback: (lines) => set({ scrollback: lines }),
 
   closeTab: (sessionId) => {
     window.api.ssh.disconnect(sessionId)

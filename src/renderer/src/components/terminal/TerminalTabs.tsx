@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Plus, X, WifiOff, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useTerminalStore, type TerminalSession } from '@/stores/terminal-store'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 interface TerminalTabsProps {
   onNewTab: () => void
@@ -9,6 +11,16 @@ interface TerminalTabsProps {
 
 export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
   const { sessions, tabOrder, activeTabId, setActiveTab, closeTab } = useTerminalStore()
+  const [closingTabId, setClosingTabId] = useState<string | null>(null)
+
+  const handleCloseTab = (sessionId: string) => {
+    const session = sessions.get(sessionId)
+    if (session && (session.status === 'connected' || session.status === 'connecting')) {
+      setClosingTabId(sessionId)
+    } else {
+      closeTab(sessionId)
+    }
+  }
 
   return (
     <div className="flex h-9 items-center border-b border-border/60 bg-card/60 no-select">
@@ -23,7 +35,7 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
               session={session}
               isActive={sessionId === activeTabId}
               onActivate={() => setActiveTab(sessionId)}
-              onClose={() => closeTab(sessionId)}
+              onClose={() => handleCloseTab(sessionId)}
             />
           )
         })}
@@ -36,6 +48,19 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
       >
         <Plus className="h-3.5 w-3.5" />
       </button>
+
+      <ConfirmDialog
+        open={!!closingTabId}
+        title="Close active session?"
+        message="This will disconnect the SSH session. Are you sure?"
+        confirmLabel="Disconnect"
+        destructive
+        onConfirm={() => {
+          if (closingTabId) closeTab(closingTabId)
+          setClosingTabId(null)
+        }}
+        onCancel={() => setClosingTabId(null)}
+      />
     </div>
   )
 }

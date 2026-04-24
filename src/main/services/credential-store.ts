@@ -1,8 +1,12 @@
 import { safeStorage } from 'electron'
 import { getDatabase } from './database'
 
-// Store credentials in a dedicated SQLite table with encrypted values
+// The credentials table is created by migration 004_known_hosts_and_credentials.
+// A fallback CREATE IF NOT EXISTS is kept for databases initialized before that migration.
+let tableEnsured = false
+
 function ensureTable(): void {
+  if (tableEnsured) return
   const db = getDatabase()
   db.exec(`
     CREATE TABLE IF NOT EXISTS credentials (
@@ -10,6 +14,7 @@ function ensureTable(): void {
       encrypted_data BLOB NOT NULL
     )
   `)
+  tableEnsured = true
 }
 
 export function storeCredential(connectionId: string, secret: string): void {

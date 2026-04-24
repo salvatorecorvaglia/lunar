@@ -8,6 +8,13 @@ type StepCallback = (transferred: number, chunk: number, total: number) => void
 class SftpManager {
   private sftpSessions = new Map<string, SFTPWrapper>()
 
+  constructor() {
+    // Clear stale SFTP cache when the underlying SSH session disconnects/reconnects
+    sshManager.onSessionDisconnect((sessionId) => {
+      this.sftpSessions.delete(sessionId)
+    })
+  }
+
   async getSftp(sessionId: string): Promise<SFTPWrapper> {
     const existing = this.sftpSessions.get(sessionId)
     if (existing) return existing
@@ -39,8 +46,9 @@ class SftpManager {
         if (err) return reject(err)
 
         const entries: SftpEntry[] = list.map((item) => {
-          const isDir = (item.attrs.mode & 0o40000) !== 0
-          const isLink = (item.attrs.mode & 0o120000) === 0o120000
+          const fileType = item.attrs.mode & 0o170000
+          const isDir = fileType === 0o40000
+          const isLink = fileType === 0o120000
           const perms = this.formatPermissions(item.attrs.mode)
 
           return {
@@ -54,11 +62,6 @@ class SftpManager {
             owner: item.attrs.uid,
             group: item.attrs.gid
           }
-        })
-
-        entries.sort((a, b) => {
-          if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
-          return a.name.localeCompare(b.name)
         })
 
         resolve(entries)
@@ -88,18 +91,49 @@ class SftpManager {
 
   async remove(sessionId: string, remotePath: string, isDirectory: boolean): Promise<void> {
     const sftp = await this.getSftp(sessionId)
-    return new Promise((resolve, reject) => {
-      if (isDirectory) {
-        sftp.rmdir(remotePath, (err) => {
-          if (err) return reject(err)
-          resolve()
-        })
-      } else {
+    if (isDirectory) {
+      await this.removeDir(sftp, remotePath)
+    } else {
+      return new Promise((resolve, reject) => {
         sftp.unlink(remotePath, (err) => {
           if (err) return reject(err)
           resolve()
         })
+      })
+    }
+  }
+
+  /** Recursively remove a directory and all its contents. */
+  private async removeDir(sftp: SFTPWrapper, dirPath: string): Promise<void> {
+    const entries = await new Promise<{ filename: string; attrs: { mode: number } }[]>(
+      (resolve, reject) => {
+        sftp.readdir(dirPath, (err, list) => {
+          if (err) return reject(err)
+          resolve(list.map((item) => ({ filename: item.filename, attrs: { mode: item.attrs.mode } })))
+        })
       }
+    )
+
+    for (const entry of entries) {
+      const fullPath = dirPath === '/' ? `/${entry.filename}` : `${dirPath}/${entry.filename}`
+      const fileType = entry.attrs.mode & 0o170000
+      if (fileType === 0o40000) {
+        await this.removeDir(sftp, fullPath)
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          sftp.unlink(fullPath, (err) => {
+            if (err) return reject(err)
+            resolve()
+          })
+        })
+      }
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      sftp.rmdir(dirPath, (err) => {
+        if (err) return reject(err)
+        resolve()
+      })
     })
   }
 

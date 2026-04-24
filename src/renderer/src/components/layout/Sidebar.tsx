@@ -1,12 +1,15 @@
-import { useMemo, memo } from 'react'
+import { useMemo, memo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Server, Clock, Settings, ChevronRight, Loader2 } from 'lucide-react'
+import { Plus, Server, Clock, Settings, ChevronRight, ChevronDown, Loader2, Pencil, Trash2, Terminal, FolderClosed } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import { useUIStore } from '@/stores/ui-store'
 import { useConnectionStore } from '@/stores/connection-store'
 import { useTerminalStore } from '@/stores/terminal-store'
-import { useConnections } from '@/hooks/use-connections'
-import { connectToHost } from '@/components/terminal/TerminalView'
+import { useConnections, useDeleteConnection } from '@/hooks/use-connections'
+import { connectToHost } from '@/lib/ssh'
+import { ContextMenu, type ContextMenuItem } from '@/components/common/ContextMenu'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 export function Sidebar() {
   const { sidebarOpen, sidebarWidth, setSettingsOpen } = useUIStore()
@@ -21,6 +24,22 @@ export function Sidebar() {
         .sort((a, b) => (b.lastConnectedAt || 0) - (a.lastConnectedAt || 0))
         .slice(0, 5),
     [connectionList]
+  )
+
+  const groupedConnections = useMemo(() => {
+    const groups = new Map<string, typeof connectionList>()
+    for (const conn of connectionList) {
+      const folder = conn.folder || 'default'
+      const list = groups.get(folder) ?? []
+      list.push(conn)
+      groups.set(folder, list)
+    }
+    return groups
+  }, [connectionList])
+
+  const hasNonDefaultFolders = useMemo(
+    () => Array.from(groupedConnections.keys()).some((k) => k !== 'default'),
+    [groupedConnections]
   )
 
   return (
@@ -79,10 +98,16 @@ export function Sidebar() {
                   Add your first connection
                 </button>
               </div>
-            ) : (
+            ) : !hasNonDefaultFolders ? (
               <div className="space-y-0.5">
                 {connectionList.map((conn) => (
                   <ConnectionItem key={conn.id} connection={conn} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {Array.from(groupedConnections.entries()).map(([folder, conns]) => (
+                  <FolderGroup key={folder} name={folder} connections={conns} />
                 ))}
               </div>
             )}
@@ -122,6 +147,53 @@ export function Sidebar() {
   )
 }
 
+function FolderGroup({
+  name,
+  connections
+}: {
+  name: string
+  connections: { id: string; name: string; host: string; username: string; colorTag?: string; folder: string }[]
+}) {
+  const [open, setOpen] = useState(true)
+  const isDefault = name === 'default'
+
+  if (isDefault) {
+    return (
+      <div className="space-y-0.5">
+        {connections.map((conn) => (
+          <ConnectionItem key={conn.id} connection={conn} />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground/70 hover:text-muted-foreground hover:bg-sidebar-accent/40 cursor-pointer"
+      >
+        <ChevronDown
+          className={cn(
+            'h-3 w-3 transition-transform duration-150',
+            !open && '-rotate-90'
+          )}
+        />
+        <FolderClosed className="h-3 w-3" />
+        <span className="truncate">{name}</span>
+        <span className="ml-auto text-[10px] text-muted-foreground/50">{connections.length}</span>
+      </button>
+      {open && (
+        <div className="ml-2 space-y-0.5 border-l border-border/40 pl-1">
+          {connections.map((conn) => (
+            <ConnectionItem key={conn.id} connection={conn} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const ConnectionItem = memo(function ConnectionItem({
   connection,
   compact = false
@@ -129,9 +201,11 @@ const ConnectionItem = memo(function ConnectionItem({
   connection: { id: string; name: string; host: string; username: string; colorTag?: string }
   compact?: boolean
 }) {
-  const { activeConnectionId, setActiveConnectionId } = useConnectionStore()
+  const { activeConnectionId, setActiveConnectionId, openEditForm } = useConnectionStore()
   const { setActiveView } = useUIStore()
   const { sessions } = useTerminalStore()
+  const deleteMutation = useDeleteConnection()
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const isActive = activeConnectionId === connection.id
   const isConnected = Array.from(sessions.values()).some(
     (s) => s.connectionId === connection.id && s.status === 'connected'
@@ -144,10 +218,42 @@ const ConnectionItem = memo(function ConnectionItem({
   const handleConnect = () => {
     setActiveConnectionId(connection.id)
     setActiveView('terminal')
+
+    // If already connected, switch to the existing tab instead of opening a new one
+    const existingSession = Array.from(sessions.values()).find(
+      (s) => s.connectionId === connection.id && (s.status === 'connected' || s.status === 'connecting' || s.status === 'reconnecting')
+    )
+    if (existingSession) {
+      useTerminalStore.getState().setActiveTab(existingSession.id)
+      return
+    }
+
     connectToHost(connection.id)
   }
 
+  const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: 'Connect',
+      icon: <Terminal className="h-3.5 w-3.5" />,
+      onClick: handleConnect
+    },
+    {
+      label: 'Edit',
+      icon: <Pencil className="h-3.5 w-3.5" />,
+      onClick: () => openEditForm(connection.id)
+    },
+    {
+      label: 'Delete',
+      icon: <Trash2 className="h-3.5 w-3.5" />,
+      onClick: () => setConfirmDelete(true),
+      destructive: true,
+      separator: true
+    }
+  ]
+
   return (
+    <>
+    <ContextMenu items={contextMenuItems}>
     <button
       onClick={handleConnect}
       className={cn(
@@ -185,5 +291,23 @@ const ConnectionItem = memo(function ConnectionItem({
 
       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 flex-shrink-0 transition-colors" />
     </button>
+    </ContextMenu>
+
+    <ConfirmDialog
+      open={confirmDelete}
+      title="Delete connection?"
+      message={`"${connection.name}" will be permanently deleted. This cannot be undone.`}
+      confirmLabel="Delete"
+      destructive
+      onConfirm={() => {
+        deleteMutation.mutate(connection.id, {
+          onSuccess: () => toast.success('Connection deleted'),
+          onError: () => toast.error('Failed to delete connection')
+        })
+        setConfirmDelete(false)
+      }}
+      onCancel={() => setConfirmDelete(false)}
+    />
+    </>
   )
 })

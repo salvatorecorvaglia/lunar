@@ -134,6 +134,22 @@ function getMigrations(): { name: string; sql: string }[] {
         CREATE INDEX IF NOT EXISTS idx_history_connection ON connection_history(connection_id);
         CREATE INDEX IF NOT EXISTS idx_history_connected ON connection_history(connected_at DESC);
       `
+    },
+    {
+      name: '004_known_hosts_and_credentials',
+      sql: `
+        CREATE TABLE IF NOT EXISTS known_hosts (
+          host_key TEXT PRIMARY KEY,
+          algorithm TEXT NOT NULL,
+          fingerprint TEXT NOT NULL,
+          first_seen INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+
+        CREATE TABLE IF NOT EXISTS credentials (
+          connection_id TEXT PRIMARY KEY,
+          encrypted_data BLOB NOT NULL
+        );
+      `
     }
   ]
 }

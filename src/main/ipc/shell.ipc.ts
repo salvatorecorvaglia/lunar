@@ -1,6 +1,6 @@
 import { ipcMain, dialog } from 'electron'
 import { readdir, stat, lstat } from 'fs/promises'
-import { join } from 'path'
+import { join, basename } from 'path'
 import { homedir } from 'os'
 import { IPC } from '@shared/constants'
 import type { LocalFileEntry } from '@shared/types/sftp'
@@ -52,6 +52,15 @@ export function registerShellHandlers(): void {
       }
 
       return result.filePaths[0]
+    }
+  )
+
+  ipcMain.handle(
+    IPC.SHELL_JOIN_PATH,
+    (_event, { base, fileName }: { base: string; fileName: string }) => {
+      // Sanitize: use only the basename to prevent path traversal
+      const safeName = basename(fileName)
+      return join(base, safeName)
     }
   )
 }

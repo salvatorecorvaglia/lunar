@@ -33,16 +33,15 @@ const panelVariants = {
 
 export function SettingsPanel() {
   const { settingsOpen, setSettingsOpen, theme, setTheme } = useUIStore()
-  const { terminalTheme, setTerminalTheme } = useTerminalStore()
-
-  const [fontSize, setFontSize] = useState(DEFAULT_SETTINGS['terminal.fontSize'])
-  const [scrollback, setScrollback] = useState(DEFAULT_SETTINGS['terminal.scrollback'])
+  const { terminalTheme, setTerminalTheme, fontSize, setFontSize, scrollback, setScrollback } = useTerminalStore()
   const [concurrency, setConcurrency] = useState(DEFAULT_SETTINGS['transfer.concurrency'])
   const [autoReconnect, setAutoReconnect] = useState(DEFAULT_SETTINGS['ssh.autoReconnect'])
+  const [appVersion, setAppVersion] = useState('0.0.0')
 
   // Load settings from DB on open
   useEffect(() => {
     if (!settingsOpen) return
+    window.api.app.getVersion().then(setAppVersion)
     window.api.settings.getAll().then((settings: Record<string, unknown>) => {
       if (settings['terminal.fontSize'] != null) setFontSize(Number(settings['terminal.fontSize']))
       if (settings['terminal.scrollback'] != null)
@@ -52,7 +51,7 @@ export function SettingsPanel() {
       if (settings['ssh.autoReconnect'] != null)
         setAutoReconnect(Boolean(settings['ssh.autoReconnect']))
     })
-  }, [settingsOpen])
+  }, [settingsOpen, setFontSize, setScrollback])
 
   const persistSetting = useCallback((key: string, value: unknown) => {
     window.api.settings.set(key, JSON.stringify(value))
@@ -232,7 +231,7 @@ export function SettingsPanel() {
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     SSH Terminal & SFTP File Manager
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground/60">v1.0.0</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground/60">v{appVersion}</p>
                 </div>
               </Section>
             </div>

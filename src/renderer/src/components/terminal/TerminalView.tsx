@@ -1,12 +1,13 @@
-import { useCallback } from 'react'
-import { v4 as uuidv4 } from 'uuid'
+import { useCallback, useEffect } from 'react'
 import { Terminal, Plus } from 'lucide-react'
-import { toast } from 'sonner'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useConnectionStore } from '@/stores/connection-store'
 import { terminalThemes } from '@/themes/terminal'
+import { connectToHost } from '@/lib/ssh'
 import { TerminalTabs } from './TerminalTabs'
 import { SplitPane } from './SplitPane'
+
+export { connectToHost }
 
 export function TerminalView() {
   const { splitTree, terminalTheme } = useTerminalStore()
@@ -20,6 +21,45 @@ export function TerminalView() {
     }
   }, [])
 
+  // Keyboard shortcuts: Cmd+1..9 for tab switching, Cmd+Shift+]/[ for next/prev
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return
+
+      const { tabOrder, setActiveTab, activeTabId } = useTerminalStore.getState()
+      if (tabOrder.length === 0) return
+
+      // Cmd+1 through Cmd+9
+      const digit = parseInt(e.key, 10)
+      if (digit >= 1 && digit <= 9) {
+        e.preventDefault()
+        const index = Math.min(digit - 1, tabOrder.length - 1)
+        setActiveTab(tabOrder[index])
+        return
+      }
+
+      // Cmd+Shift+] — next tab
+      if (e.shiftKey && e.key === ']') {
+        e.preventDefault()
+        const idx = tabOrder.indexOf(activeTabId ?? '')
+        const next = (idx + 1) % tabOrder.length
+        setActiveTab(tabOrder[next])
+        return
+      }
+
+      // Cmd+Shift+[ — previous tab
+      if (e.shiftKey && e.key === '[') {
+        e.preventDefault()
+        const idx = tabOrder.indexOf(activeTabId ?? '')
+        const prev = (idx - 1 + tabOrder.length) % tabOrder.length
+        setActiveTab(tabOrder[prev])
+        return
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   const themeBg = terminalThemes[terminalTheme]?.background || '#282a36'
 
   return (
@@ -30,18 +70,18 @@ export function TerminalView() {
           <SplitPane node={splitTree} />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.06]">
-              <Terminal className="h-7 w-7 text-white/30" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
+              <Terminal className="h-7 w-7 text-muted-foreground/30" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-white/40">No active sessions</p>
-              <p className="mt-1 text-xs text-white/20">
+              <p className="text-sm font-medium text-foreground/40">No active sessions</p>
+              <p className="mt-1 text-xs text-muted-foreground/40">
                 Select a connection from the sidebar to begin
               </p>
             </div>
             <button
               onClick={handleNewTab}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-medium text-white/50 hover:bg-white/[0.08] hover:text-white/70 cursor-pointer"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               New Session
@@ -51,49 +91,4 @@ export function TerminalView() {
       </div>
     </div>
   )
-}
-
-export async function connectToHost(connectionId: string): Promise<void> {
-  const sessionId = uuidv4()
-  const { addSession, updateSessionStatus } = useTerminalStore.getState()
-
-  let connectionName = 'Unknown'
-  try {
-    const conn = await window.api.connections.get(connectionId)
-    if (conn) {
-      connectionName = conn.name
-    }
-  } catch {
-    // Connection lookup may fail if deleted
-  }
-
-  addSession({
-    id: sessionId,
-    connectionId,
-    connectionName,
-    status: 'connecting',
-    title: connectionName
-  })
-
-  // Listener lives for the session lifetime — cleanup handled on tab close
-  window.api.ssh.onStatus((event) => {
-    if (event.sessionId === sessionId) {
-      updateSessionStatus(sessionId, event.status)
-    }
-  })
-
-  try {
-    const result = await window.api.ssh.connect({
-      connectionId,
-      sessionId
-    })
-
-    if (!result.success) {
-      toast.error(`Connection failed: ${result.error}`)
-      updateSessionStatus(sessionId, 'error')
-    }
-  } catch (err: unknown) {
-    toast.error(`Connection error: ${err instanceof Error ? err.message : String(err)}`)
-    updateSessionStatus(sessionId, 'error')
-  }
 }

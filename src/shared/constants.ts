@@ -32,6 +32,7 @@ export const IPC = {
   SHELL_READDIR: 'shell:readdir',
   SHELL_HOME_DIR: 'shell:home-dir',
   SHELL_OPEN_FILE_DIALOG: 'shell:open-file-dialog',
+  SHELL_JOIN_PATH: 'shell:join-path',
 
   // Transfers (main -> renderer)
   TRANSFER_PROGRESS: 'transfer:progress',

@@ -1,12 +1,14 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { X, ChevronUp, ChevronDown } from 'lucide-react'
 import '@xterm/xterm/css/xterm.css'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { terminalThemes } from '@/themes/terminal'
+import type { SessionStatus } from '@shared/types/terminal'
 
 interface TerminalPaneProps {
   sessionId: string
@@ -16,9 +18,14 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
-  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const searchAddonRef = useRef<SearchAddon | null>(null)
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const terminalTheme = useTerminalStore((s) => s.terminalTheme)
+  const fontSize = useTerminalStore((s) => s.fontSize)
+  const scrollback = useTerminalStore((s) => s.scrollback)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const handleResize = useCallback(() => {
     if (resizeTimeoutRef.current) {
@@ -42,6 +49,34 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
     }, 100)
   }, [sessionId])
 
+  // Ctrl+F to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault()
+        setSearchOpen(true)
+        setTimeout(() => searchInputRef.current?.focus(), 50)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    setSearchQuery('')
+    searchAddonRef.current?.clearDecorations()
+    terminalRef.current?.focus()
+  }, [])
+
+  const findNext = useCallback(() => {
+    if (searchQuery) searchAddonRef.current?.findNext(searchQuery)
+  }, [searchQuery])
+
+  const findPrevious = useCallback(() => {
+    if (searchQuery) searchAddonRef.current?.findPrevious(searchQuery)
+  }, [searchQuery])
+
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -50,11 +85,11 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
     const terminal = new Terminal({
       cursorBlink: true,
       cursorStyle: 'bar',
-      fontSize: 14,
+      fontSize,
       fontFamily: 'JetBrains Mono, Menlo, Consolas, monospace',
       lineHeight: 1.2,
       letterSpacing: 0,
-      scrollback: 10000,
+      scrollback,
       allowProposedApi: true,
       theme
     })
@@ -84,6 +119,7 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
 
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
+    searchAddonRef.current = searchAddon
 
     // Send keystrokes to SSH
     terminal.onData((data) => {
@@ -111,10 +147,17 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
       }
     })
 
+    // Sync session status from main process
+    const { updateSessionStatus } = useTerminalStore.getState()
+    const cleanupStatus = window.api.ssh.onStatus((event: { sessionId: string; status: SessionStatus }) => {
+      if (event.sessionId === sessionId) {
+        updateSessionStatus(sessionId, event.status)
+      }
+    })
+
     // ResizeObserver for container size changes
     const observer = new ResizeObserver(handleResize)
     observer.observe(containerRef.current)
-    resizeObserverRef.current = observer
 
     // Initial resize
     setTimeout(() => {
@@ -130,6 +173,7 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
       cleanupData()
       cleanupClose()
       cleanupError()
+      cleanupStatus()
       observer.disconnect()
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current)
@@ -137,10 +181,73 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
       terminal.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
+      searchAddonRef.current = null
     }
-  }, [sessionId, handleResize, terminalTheme])
+  }, [sessionId, handleResize])
+
+  // Update theme in place without remounting (preserves scroll history)
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (terminal) {
+      terminal.options.theme = terminalThemes[terminalTheme]
+    }
+  }, [terminalTheme])
+
+  // Apply font size changes live
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (terminal) {
+      terminal.options.fontSize = fontSize
+      fitAddonRef.current?.fit()
+    }
+  }, [fontSize])
+
+  // Apply scrollback changes live
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (terminal) {
+      terminal.options.scrollback = scrollback
+    }
+  }, [scrollback])
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-hidden" style={{ padding: '4px' }} />
+    <div className="relative h-full w-full overflow-hidden">
+      {/* Search bar */}
+      {searchOpen && (
+        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-lg border border-border/80 bg-card px-2 py-1 shadow-lg">
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              if (e.target.value) {
+                searchAddonRef.current?.findNext(e.target.value)
+              } else {
+                searchAddonRef.current?.clearDecorations()
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.shiftKey ? findPrevious() : findNext()
+              }
+              if (e.key === 'Escape') closeSearch()
+            }}
+            placeholder="Search..."
+            className="w-40 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
+          />
+          <button onClick={findPrevious} className="btn-icon !p-0.5" title="Previous" aria-label="Previous match">
+            <ChevronUp className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={findNext} className="btn-icon !p-0.5" title="Next" aria-label="Next match">
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={closeSearch} className="btn-icon !p-0.5" title="Close" aria-label="Close search">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+      <div ref={containerRef} className="h-full w-full" style={{ padding: '4px' }} />
+    </div>
   )
 }

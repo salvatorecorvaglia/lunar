@@ -57,3 +57,13 @@ export interface LocalFileEntry {
   isDirectory: boolean
   isSymlink: boolean
 }
+
+/** Unified file entry type for use in the renderer file browser UI. */
+export interface FileEntry {
+  name: string
+  path: string
+  size: number
+  modifiedAt: number
+  isDirectory: boolean
+  isSymlink?: boolean
+}

@@ -8,12 +8,14 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Trash2
+  Trash2,
+  RotateCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTransferStore } from '@/stores/transfer-store'
 import { cancelTransfer } from '@/hooks/use-transfers'
 import type { TransferItem } from '@shared/types/transfer'
+import { toast } from 'sonner'
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -27,8 +29,40 @@ function formatSpeed(bytesPerSec: number): string {
 }
 
 export function TransferQueue() {
-  const { transfers, queueExpanded, toggleQueueExpanded, clearCompleted, removeTransfer } =
+  const { transfers, queueExpanded, toggleQueueExpanded, clearCompleted, removeTransfer, addTransfer } =
     useTransferStore()
+
+  const retryTransfer = async (item: TransferItem) => {
+    removeTransfer(item.id)
+    try {
+      const transferId =
+        item.type === 'download'
+          ? await window.api.sftp.download({
+              sessionId: item.sessionId,
+              remotePath: item.remotePath,
+              localPath: item.localPath
+            })
+          : await window.api.sftp.upload({
+              sessionId: item.sessionId,
+              localPath: item.localPath,
+              remotePath: item.remotePath
+            })
+      addTransfer({
+        id: transferId,
+        type: item.type,
+        localPath: item.localPath,
+        remotePath: item.remotePath,
+        fileName: item.fileName,
+        size: item.size,
+        transferred: 0,
+        status: 'queued',
+        bytesPerSec: 0,
+        sessionId: item.sessionId
+      })
+    } catch (err: unknown) {
+      toast.error(`Retry failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   const items = Array.from(transfers.values())
   if (items.length === 0) return null
@@ -69,7 +103,7 @@ export function TransferQueue() {
           >
             <div className="max-h-[30vh] overflow-y-auto">
               {items.map((item) => (
-                <TransferRow key={item.id} item={item} onRemove={() => removeTransfer(item.id)} />
+                <TransferRow key={item.id} item={item} onRemove={() => removeTransfer(item.id)} onRetry={() => retryTransfer(item)} />
               ))}
             </div>
 
@@ -91,7 +125,7 @@ export function TransferQueue() {
   )
 }
 
-function TransferRow({ item, onRemove }: { item: TransferItem; onRemove: () => void }) {
+function TransferRow({ item, onRemove, onRetry }: { item: TransferItem; onRemove: () => void; onRetry: () => void }) {
   const percent = item.size > 0 ? Math.round((item.transferred / item.size) * 100) : 0
   const isInProgress = item.status === 'active' || item.status === 'queued'
 
@@ -145,6 +179,18 @@ function TransferRow({ item, onRemove }: { item: TransferItem; onRemove: () => v
         {item.status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
         {item.status === 'error' && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
       </div>
+
+      {/* Retry (error only) */}
+      {item.status === 'error' && (
+        <button
+          onClick={onRetry}
+          title="Retry transfer"
+          className="flex-shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-foreground cursor-pointer"
+          aria-label="Retry transfer"
+        >
+          <RotateCw className="h-3 w-3" />
+        </button>
+      )}
 
       {/* Cancel / Remove */}
       <button

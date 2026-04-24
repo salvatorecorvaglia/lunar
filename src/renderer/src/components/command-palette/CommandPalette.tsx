@@ -17,7 +17,7 @@ import { useUIStore } from '@/stores/ui-store'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useConnectionStore } from '@/stores/connection-store'
 import { useConnections } from '@/hooks/use-connections'
-import { connectToHost } from '@/components/terminal/TerminalView'
+import { connectToHost } from '@/lib/ssh'
 
 interface Command {
   id: string

@@ -83,7 +83,9 @@ const api = {
   shell: {
     readdir: (path: string) => ipcRenderer.invoke(IPC.SHELL_READDIR, path),
     homeDir: () => ipcRenderer.invoke(IPC.SHELL_HOME_DIR),
-    openFileDialog: (options?: unknown) => ipcRenderer.invoke(IPC.SHELL_OPEN_FILE_DIALOG, options)
+    openFileDialog: (options?: unknown) => ipcRenderer.invoke(IPC.SHELL_OPEN_FILE_DIALOG, options),
+    joinPath: (base: string, fileName: string) =>
+      ipcRenderer.invoke(IPC.SHELL_JOIN_PATH, { base, fileName }) as Promise<string>
   },
 
   // Transfer events
