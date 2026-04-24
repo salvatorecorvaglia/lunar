@@ -57,12 +57,28 @@ npm run typecheck:node     # Main + preload only
 npm run typecheck:web      # Renderer only
 ```
 
+### Testing
+
+```bash
+npm run test               # Run all tests
+npm run test:watch         # Run tests in watch mode
+npm run test:coverage      # Run tests with coverage report
+```
+
+### Formatting & Linting
+
+```bash
+npm run lint               # Run ESLint
+npm run format             # Format code with Prettier
+```
+
 ## Tech Stack
 
 | Layer         | Technology                |
 | ------------- | ------------------------- |
 | Framework     | Electron + electron-vite  |
 | Renderer      | React 18, Tailwind CSS v4 |
+| UI Components | Lucide React, CMDK, Sonner|
 | Terminal      | xterm.js (WebGL addon)    |
 | SSH/SFTP      | ssh2                      |
 | Database      | better-sqlite3 (WAL mode) |
@@ -70,6 +86,7 @@ npm run typecheck:web      # Renderer only
 | Data Fetching | TanStack React Query      |
 | Animations    | Framer Motion             |
 | Packaging     | electron-builder          |
+| Testing       | Vitest, Testing Library   |
 
 ## Keyboard Shortcuts
 
