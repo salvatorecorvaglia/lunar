@@ -79,3 +79,9 @@ npm run typecheck:web      # Renderer only
 | `Cmd/Ctrl+B` | Toggle sidebar  |
 | `Cmd/Ctrl+,` | Open settings   |
 | `Cmd/Ctrl+N` | New connection  |
+
+## 📝 Author
+
+**Salvatore Corvaglia**
+
+- GitHub: [@salvatorecorvaglia](https://github.com/salvatorecorvaglia)
