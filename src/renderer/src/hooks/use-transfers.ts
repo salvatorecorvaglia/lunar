@@ -20,9 +20,14 @@ export function useTransferEventListener(): void {
     })
 
     const cleanupComplete = window.api.transfers.onComplete((event) => {
+      // Look up sessionId from the transfer before marking complete
+      const transfer = useTransferStore.getState().transfers.get(event.transferId)
+      const sessionId = transfer?.sessionId
       completeTransfer(event.transferId)
       // Invalidate both directory caches so the UI refreshes
-      invalidateSftp('', undefined)
+      if (sessionId) {
+        invalidateSftp(sessionId, undefined)
+      }
       invalidateLocal(undefined)
     })
 

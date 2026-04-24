@@ -1,3 +1,4 @@
+import { useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus,
@@ -6,7 +7,6 @@ import {
   Settings,
   ChevronRight,
   Zap,
-  Wifi,
   Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -22,10 +22,14 @@ export function Sidebar() {
   const { data: connections, isLoading } = useConnections()
   const connectionList = connections ?? []
 
-  const recentConnections = [...connectionList]
-    .filter((c) => c.lastConnectedAt)
-    .sort((a, b) => (b.lastConnectedAt || 0) - (a.lastConnectedAt || 0))
-    .slice(0, 5)
+  const recentConnections = useMemo(
+    () =>
+      [...connectionList]
+        .filter((c) => c.lastConnectedAt)
+        .sort((a, b) => (b.lastConnectedAt || 0) - (a.lastConnectedAt || 0))
+        .slice(0, 5),
+    [connectionList]
+  )
 
   return (
     <AnimatePresence mode="wait">
@@ -141,7 +145,7 @@ export function Sidebar() {
   )
 }
 
-function ConnectionItem({
+const ConnectionItem = memo(function ConnectionItem({
   connection,
   compact = false
 }: {
@@ -204,4 +208,4 @@ function ConnectionItem({
       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 flex-shrink-0 transition-colors" />
     </button>
   )
-}
+})

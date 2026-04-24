@@ -1,11 +1,11 @@
 import { ipcMain } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
 import { IPC } from '@shared/constants'
-import { getDatabase } from '../services/database'
+import { getDatabase, type ConnectionRow } from '../services/database'
 import type { Connection, CreateConnectionInput, UpdateConnectionInput } from '@shared/types/connection'
 import { storeCredential, deleteCredential } from '../services/credential-store'
 
-function rowToConnection(row: any): Connection {
+function rowToConnection(row: ConnectionRow): Connection {
   return {
     id: row.id,
     name: row.name,
@@ -27,16 +27,24 @@ export function registerDbHandlers(): void {
   const db = getDatabase()
 
   ipcMain.handle(IPC.CONNECTION_LIST, () => {
-    const rows = db.prepare('SELECT * FROM connections ORDER BY name ASC').all()
+    const rows = db.prepare('SELECT * FROM connections ORDER BY name ASC').all() as ConnectionRow[]
     return rows.map(rowToConnection)
   })
 
   ipcMain.handle(IPC.CONNECTION_GET, (_event, id: string) => {
-    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(id)
+    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(id) as ConnectionRow | undefined
     return row ? rowToConnection(row) : null
   })
 
   ipcMain.handle(IPC.CONNECTION_CREATE, (_event, input: CreateConnectionInput) => {
+    // Validate required fields
+    if (!input.name?.trim()) throw new Error('Connection name is required')
+    if (!input.host?.trim()) throw new Error('Host is required')
+    if (!input.username?.trim()) throw new Error('Username is required')
+    if (typeof input.port !== 'number' || input.port < 1 || input.port > 65535) {
+      throw new Error('Port must be between 1 and 65535')
+    }
+
     const id = uuidv4()
     const now = Math.floor(Date.now() / 1000)
 
@@ -65,20 +73,20 @@ export function registerDbHandlers(): void {
       storeCredential(id, input.passphrase)
     }
 
-    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(id)
+    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(id) as ConnectionRow
     return rowToConnection(row)
   })
 
   ipcMain.handle(IPC.CONNECTION_UPDATE, (_event, input: UpdateConnectionInput) => {
     const now = Math.floor(Date.now() / 1000)
-    const existing = db.prepare('SELECT * FROM connections WHERE id = ?').get(input.id)
+    const existing = db.prepare('SELECT * FROM connections WHERE id = ?').get(input.id) as ConnectionRow | undefined
 
     if (!existing) {
       throw new Error(`Connection not found: ${input.id}`)
     }
 
     const fields: string[] = ['updated_at = ?']
-    const values: any[] = [now]
+    const values: (string | number | null)[] = [now]
 
     if (input.name !== undefined) {
       fields.push('name = ?')
@@ -128,7 +136,7 @@ export function registerDbHandlers(): void {
       storeCredential(input.id, input.passphrase)
     }
 
-    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(input.id)
+    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(input.id) as ConnectionRow
     return rowToConnection(row)
   })
 
@@ -151,7 +159,7 @@ export function registerDbHandlers(): void {
 
   ipcMain.handle(IPC.SETTINGS_GET_ALL, () => {
     const rows = db.prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[]
-    const settings: Record<string, any> = {}
+    const settings: Record<string, unknown> = {}
     for (const row of rows) {
       try {
         settings[row.key] = JSON.parse(row.value)

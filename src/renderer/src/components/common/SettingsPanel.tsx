@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { X, Monitor, Terminal, Upload, Wifi, Moon, Sun, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
 import { useTerminalStore } from '@/stores/terminal-store'
 import type { TerminalThemeName } from '@shared/types/terminal'
+import { DEFAULT_SETTINGS } from '@shared/types/settings'
 
 const TERMINAL_THEMES: { value: TerminalThemeName; label: string; bg: string; fg: string; accent: string }[] = [
   { value: 'dracula', label: 'Dracula', bg: '#282a36', fg: '#f8f8f2', accent: '#bd93f9' },
@@ -27,6 +28,26 @@ const panelVariants = {
 export function SettingsPanel() {
   const { settingsOpen, setSettingsOpen, theme, setTheme } = useUIStore()
   const { terminalTheme, setTerminalTheme } = useTerminalStore()
+
+  const [fontSize, setFontSize] = useState(DEFAULT_SETTINGS['terminal.fontSize'])
+  const [scrollback, setScrollback] = useState(DEFAULT_SETTINGS['terminal.scrollback'])
+  const [concurrency, setConcurrency] = useState(DEFAULT_SETTINGS['transfer.concurrency'])
+  const [autoReconnect, setAutoReconnect] = useState(DEFAULT_SETTINGS['ssh.autoReconnect'])
+
+  // Load settings from DB on open
+  useEffect(() => {
+    if (!settingsOpen) return
+    window.api.settings.getAll().then((settings: Record<string, unknown>) => {
+      if (settings['terminal.fontSize'] != null) setFontSize(Number(settings['terminal.fontSize']))
+      if (settings['terminal.scrollback'] != null) setScrollback(Number(settings['terminal.scrollback']))
+      if (settings['transfer.concurrency'] != null) setConcurrency(Number(settings['transfer.concurrency']))
+      if (settings['ssh.autoReconnect'] != null) setAutoReconnect(Boolean(settings['ssh.autoReconnect']))
+    })
+  }, [settingsOpen])
+
+  const persistSetting = useCallback((key: string, value: unknown) => {
+    window.api.settings.set(key, JSON.stringify(value))
+  }, [])
 
   // Close on Escape
   useEffect(() => {
@@ -139,20 +160,45 @@ export function SettingsPanel() {
                 </div>
 
                 <SettingRow label="Font" value="JetBrains Mono" />
-                <SettingRow label="Font Size" value="14px" />
-                <SettingRow label="Scrollback" value="10,000 lines" />
+                <EditableNumberRow
+                  label="Font Size"
+                  value={fontSize}
+                  min={10}
+                  max={24}
+                  suffix="px"
+                  onChange={(v) => { setFontSize(v); persistSetting('terminal.fontSize', v) }}
+                />
+                <EditableNumberRow
+                  label="Scrollback"
+                  value={scrollback}
+                  min={1000}
+                  max={100000}
+                  step={1000}
+                  suffix=" lines"
+                  onChange={(v) => { setScrollback(v); persistSetting('terminal.scrollback', v) }}
+                />
               </Section>
 
               {/* SSH */}
               <Section title="SSH" icon={<Wifi className="h-4 w-4" />}>
-                <ToggleRow label="Auto-reconnect" enabled />
+                <ToggleRow
+                  label="Auto-reconnect"
+                  enabled={autoReconnect}
+                  onToggle={(v) => { setAutoReconnect(v); persistSetting('ssh.autoReconnect', v) }}
+                />
                 <SettingRow label="Keep-alive interval" value="10s" />
                 <SettingRow label="Max reconnect attempts" value="5" />
               </Section>
 
               {/* Transfers */}
               <Section title="Transfers" icon={<Upload className="h-4 w-4" />}>
-                <SettingRow label="Concurrent transfers" value="3" />
+                <EditableNumberRow
+                  label="Concurrent transfers"
+                  value={concurrency}
+                  min={1}
+                  max={10}
+                  onChange={(v) => { setConcurrency(v); persistSetting('transfer.concurrency', v) }}
+                />
               </Section>
 
               {/* About */}
@@ -235,22 +281,65 @@ function SettingRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function ToggleRow({ label, enabled }: { label: string; enabled: boolean }) {
+function ToggleRow({ label, enabled, onToggle }: { label: string; enabled: boolean; onToggle?: (value: boolean) => void }) {
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <div
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        onClick={() => onToggle?.(!enabled)}
         className={cn(
-          'flex h-5 w-9 items-center rounded-full px-0.5',
+          'flex h-5 w-9 items-center rounded-full px-0.5 cursor-pointer transition-colors',
           enabled ? 'bg-emerald-500' : 'bg-muted'
         )}
       >
         <div
           className={cn(
-            'h-4 w-4 rounded-full bg-white shadow-sm',
+            'h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
             enabled ? 'translate-x-[14px]' : 'translate-x-0'
           )}
         />
+      </button>
+    </div>
+  )
+}
+
+function EditableNumberRow({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix = '',
+  onChange
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step?: number
+  suffix?: string
+  onChange: (value: number) => void
+}) {
+  return (
+    <div className="flex items-center justify-between py-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10)
+            if (!isNaN(v) && v >= min && v <= max) onChange(v)
+          }}
+          className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-xs font-medium text-foreground outline-none focus:border-ring"
+        />
+        {suffix && <span className="text-[11px] text-muted-foreground">{suffix}</span>}
       </div>
     </div>
   )

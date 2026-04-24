@@ -1,4 +1,4 @@
-import { Plus, X, Wifi, WifiOff, Loader2 } from 'lucide-react'
+import { Plus, X, WifiOff, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useTerminalStore, type TerminalSession } from '@/stores/terminal-store'

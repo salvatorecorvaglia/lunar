@@ -2,6 +2,24 @@ import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
+import type { AuthType } from '@shared/types/connection'
+
+/** Shape of a row in the `connections` table (snake_case DB columns). */
+export interface ConnectionRow {
+  id: string
+  name: string
+  host: string
+  port: number
+  username: string
+  auth_type: AuthType
+  private_key_path: string | null
+  folder: string
+  color_tag: string | null
+  startup_command: string | null
+  last_connected_at: number | null
+  created_at: number
+  updated_at: number
+}
 
 let db: Database.Database | null = null
 
@@ -42,7 +60,7 @@ function runMigrations(db: Database.Database): void {
     db
       .prepare('SELECT name FROM _migrations')
       .all()
-      .map((row: any) => row.name)
+      .map((row) => (row as { name: string }).name)
   )
 
   const insertMigration = db.prepare('INSERT INTO _migrations (name) VALUES (?)')

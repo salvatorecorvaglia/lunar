@@ -71,7 +71,8 @@ export async function connectToHost(connectionId: string): Promise<void> {
     title: connectionName
   })
 
-  const cleanupStatus = window.api.ssh.onStatus((event) => {
+  // Listener lives for the session lifetime — cleanup handled on tab close
+  window.api.ssh.onStatus((event) => {
     if (event.sessionId === sessionId) {
       updateSessionStatus(sessionId, event.status)
     }

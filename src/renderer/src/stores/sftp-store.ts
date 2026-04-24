@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import type { SftpEntry, LocalFileEntry } from '@shared/types/sftp'
 
 interface SftpState {
   localPath: string

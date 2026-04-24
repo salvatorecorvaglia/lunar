@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import { FolderOpen, Unplug, Plus } from 'lucide-react'
+import { Unplug, Plus } from 'lucide-react'
 import { useSftpStore } from '@/stores/sftp-store'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useTransferStore } from '@/stores/transfer-store'
@@ -21,8 +21,7 @@ export function SftpManager() {
     setRemotePath,
     toggleLocalSelection,
     toggleRemoteSelection,
-    setSftpSessionId,
-    setPreviewFile
+    setSftpSessionId
   } = useSftpStore()
 
   const { sessions } = useTerminalStore()
@@ -45,7 +44,9 @@ export function SftpManager() {
   // Set local path to home directory on mount
   useEffect(() => {
     if (!localPath) {
-      window.api.shell.homeDir().then(setLocalPath)
+      window.api.shell.homeDir().then(setLocalPath).catch(() => {
+        setLocalPath('/')
+      })
     }
   }, [localPath, setLocalPath])
 

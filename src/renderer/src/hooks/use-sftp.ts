@@ -4,7 +4,7 @@ import type { SftpEntry, LocalFileEntry } from '@shared/types/sftp'
 export function useSftpDirectory(sessionId: string | null, path: string) {
   return useQuery<SftpEntry[]>({
     queryKey: ['sftp', sessionId, path],
-    queryFn: () => window.api.sftp.list({ sessionId, path }),
+    queryFn: () => window.api.sftp.list({ sessionId: sessionId!, path }),
     enabled: !!sessionId && !!path,
     staleTime: 30_000,
     retry: 1

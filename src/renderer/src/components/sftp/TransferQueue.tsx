@@ -63,11 +63,11 @@ export function TransferQueue() {
         {queueExpanded && (
           <motion.div
             initial={{ height: 0 }}
-            animate={{ height: 'auto', maxHeight: 200 }}
+            animate={{ height: 'auto' }}
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div className="max-h-[200px] overflow-y-auto">
+            <div className="max-h-[30vh] overflow-y-auto">
               {items.map((item) => (
                 <TransferRow key={item.id} item={item} onRemove={() => removeTransfer(item.id)} />
               ))}

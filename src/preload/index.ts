@@ -1,7 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/constants'
-import type { SshDataEvent, SshCloseEvent, SshErrorEvent, SshStatusEvent } from '@shared/types/terminal'
+import type { SshDataEvent, SshCloseEvent, SshErrorEvent, SshStatusEvent, SshConnectParams, SshSendDataParams, SshResizeParams } from '@shared/types/terminal'
 import type { TransferProgressEvent, TransferCompleteEvent, TransferErrorEvent } from '@shared/types/transfer'
+import type { CreateConnectionInput, UpdateConnectionInput } from '@shared/types/connection'
+import type { SftpListParams, SftpMkdirParams, SftpRenameParams, SftpDeleteParams, SftpReadFileParams, SftpTransferParams } from '@shared/types/sftp'
 
 type CleanupFn = () => void
 
@@ -30,17 +32,17 @@ const api = {
   connections: {
     list: () => ipcRenderer.invoke(IPC.CONNECTION_LIST),
     get: (id: string) => ipcRenderer.invoke(IPC.CONNECTION_GET, id),
-    create: (input: unknown) => ipcRenderer.invoke(IPC.CONNECTION_CREATE, input),
-    update: (input: unknown) => ipcRenderer.invoke(IPC.CONNECTION_UPDATE, input),
+    create: (input: CreateConnectionInput) => ipcRenderer.invoke(IPC.CONNECTION_CREATE, input),
+    update: (input: UpdateConnectionInput) => ipcRenderer.invoke(IPC.CONNECTION_UPDATE, input),
     delete: (id: string) => ipcRenderer.invoke(IPC.CONNECTION_DELETE, id)
   },
 
   // SSH sessions
   ssh: {
-    connect: (params: unknown) => ipcRenderer.invoke(IPC.SSH_CONNECT, params),
+    connect: (params: SshConnectParams) => ipcRenderer.invoke(IPC.SSH_CONNECT, params),
     disconnect: (sessionId: string) => ipcRenderer.invoke(IPC.SSH_DISCONNECT, sessionId),
-    sendData: (params: unknown) => ipcRenderer.invoke(IPC.SSH_SEND_DATA, params),
-    resize: (params: unknown) => ipcRenderer.invoke(IPC.SSH_RESIZE, params),
+    sendData: (params: SshSendDataParams) => ipcRenderer.invoke(IPC.SSH_SEND_DATA, params),
+    resize: (params: SshResizeParams) => ipcRenderer.invoke(IPC.SSH_RESIZE, params),
     onData: createEventListener<SshDataEvent>(IPC.SSH_ON_DATA),
     onClose: createEventListener<SshCloseEvent>(IPC.SSH_ON_CLOSE),
     onError: createEventListener<SshErrorEvent>(IPC.SSH_ON_ERROR),
@@ -49,13 +51,13 @@ const api = {
 
   // SFTP operations
   sftp: {
-    list: (params: unknown) => ipcRenderer.invoke(IPC.SFTP_LIST, params),
-    mkdir: (params: unknown) => ipcRenderer.invoke(IPC.SFTP_MKDIR, params),
-    rename: (params: unknown) => ipcRenderer.invoke(IPC.SFTP_RENAME, params),
-    delete: (params: unknown) => ipcRenderer.invoke(IPC.SFTP_DELETE, params),
-    readFile: (params: unknown) => ipcRenderer.invoke(IPC.SFTP_READ_FILE, params),
-    download: (params: unknown) => ipcRenderer.invoke(IPC.SFTP_DOWNLOAD, params),
-    upload: (params: unknown) => ipcRenderer.invoke(IPC.SFTP_UPLOAD, params)
+    list: (params: SftpListParams) => ipcRenderer.invoke(IPC.SFTP_LIST, params),
+    mkdir: (params: SftpMkdirParams) => ipcRenderer.invoke(IPC.SFTP_MKDIR, params),
+    rename: (params: SftpRenameParams) => ipcRenderer.invoke(IPC.SFTP_RENAME, params),
+    delete: (params: SftpDeleteParams) => ipcRenderer.invoke(IPC.SFTP_DELETE, params),
+    readFile: (params: SftpReadFileParams) => ipcRenderer.invoke(IPC.SFTP_READ_FILE, params),
+    download: (params: SftpTransferParams) => ipcRenderer.invoke(IPC.SFTP_DOWNLOAD, params),
+    upload: (params: SftpTransferParams) => ipcRenderer.invoke(IPC.SFTP_UPLOAD, params)
   },
 
   // Local filesystem

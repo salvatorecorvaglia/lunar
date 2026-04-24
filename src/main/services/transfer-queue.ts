@@ -1,10 +1,10 @@
-import { BrowserWindow } from 'electron'
 import { stat } from 'fs/promises'
 import { basename } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { IPC } from '@shared/constants'
-import type { TransferType, TransferItem } from '@shared/types/transfer'
+import type { TransferType } from '@shared/types/transfer'
 import { sftpManager } from './sftp-manager'
+import { emitToRenderer } from './emit'
 
 interface QueuedTransfer {
   id: string
@@ -23,14 +23,6 @@ class TransferQueue {
   private queue: QueuedTransfer[] = []
   private active = new Map<string, QueuedTransfer>()
   private maxConcurrent = 3
-
-  private emitToRenderer(channel: string, data: any): void {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send(channel, data)
-      }
-    }
-  }
 
   setMaxConcurrent(max: number): void {
     this.maxConcurrent = Math.max(1, Math.min(10, max))
@@ -75,19 +67,7 @@ class TransferQueue {
     this.queue.push(transfer)
 
     // Notify renderer of queued transfer
-    const item: TransferItem = {
-      id: transferId,
-      type,
-      localPath,
-      remotePath,
-      fileName,
-      size,
-      transferred: 0,
-      status: 'queued',
-      bytesPerSec: 0,
-      sessionId
-    }
-    this.emitToRenderer(IPC.TRANSFER_PROGRESS, {
+    emitToRenderer(IPC.TRANSFER_PROGRESS, {
       transferId,
       transferred: 0,
       total: size,
@@ -103,7 +83,7 @@ class TransferQueue {
     const queueIndex = this.queue.findIndex((t) => t.id === transferId)
     if (queueIndex !== -1) {
       this.queue.splice(queueIndex, 1)
-      this.emitToRenderer(IPC.TRANSFER_ERROR, {
+      emitToRenderer(IPC.TRANSFER_ERROR, {
         transferId,
         error: 'Cancelled'
       })
@@ -148,7 +128,7 @@ class TransferQueue {
             transfer.size = total
           }
 
-          this.emitToRenderer(IPC.TRANSFER_PROGRESS, {
+          emitToRenderer(IPC.TRANSFER_PROGRESS, {
             transferId: id,
             transferred,
             total: transfer.size || total,
@@ -164,12 +144,12 @@ class TransferQueue {
       }
 
       if (transfer.cancelled) {
-        this.emitToRenderer(IPC.TRANSFER_ERROR, { transferId: id, error: 'Cancelled' })
+        emitToRenderer(IPC.TRANSFER_ERROR, { transferId: id, error: 'Cancelled' })
       } else {
-        this.emitToRenderer(IPC.TRANSFER_COMPLETE, { transferId: id })
+        emitToRenderer(IPC.TRANSFER_COMPLETE, { transferId: id })
       }
     } catch (err: any) {
-      this.emitToRenderer(IPC.TRANSFER_ERROR, {
+      emitToRenderer(IPC.TRANSFER_ERROR, {
         transferId: id,
         error: err.message || 'Transfer failed'
       })
@@ -192,7 +172,7 @@ class TransferQueue {
       transfer.cancelled = true
     }
     for (const transfer of this.queue) {
-      this.emitToRenderer(IPC.TRANSFER_ERROR, {
+      emitToRenderer(IPC.TRANSFER_ERROR, {
         transferId: transfer.id,
         error: 'Cancelled'
       })

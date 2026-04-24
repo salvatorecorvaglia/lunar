@@ -1,10 +1,16 @@
 import { Client, type ClientChannel, type ConnectConfig } from 'ssh2'
-import { readFileSync } from 'fs'
-import { BrowserWindow } from 'electron'
+import { readFile } from 'fs/promises'
 import { IPC } from '@shared/constants'
+import { emitToRenderer } from './emit'
 import type { SessionStatus } from '@shared/types/terminal'
-import { getDatabase } from './database'
+import { getDatabase, type ConnectionRow } from './database'
 import { retrieveCredential } from './credential-store'
+
+interface StreamListeners {
+  onData: (data: Buffer) => void
+  onClose: () => void
+  onStderrData: (data: Buffer) => void
+}
 
 interface SshSession {
   id: string
@@ -14,23 +20,15 @@ interface SshSession {
   status: SessionStatus
   reconnectAttempts: number
   reconnectTimer: ReturnType<typeof setTimeout> | null
+  _streamListeners?: StreamListeners
 }
 
 class SshManager {
   private sessions = new Map<string, SshSession>()
 
-  private emitToRenderer(channel: string, data: any): void {
-    const windows = BrowserWindow.getAllWindows()
-    for (const win of windows) {
-      if (!win.isDestroyed()) {
-        win.webContents.send(channel, data)
-      }
-    }
-  }
-
   private setStatus(session: SshSession, status: SessionStatus): void {
     session.status = status
-    this.emitToRenderer(IPC.SSH_ON_STATUS, {
+    emitToRenderer(IPC.SSH_ON_STATUS, {
       sessionId: session.id,
       status
     })
@@ -38,7 +36,7 @@ class SshManager {
 
   async connect(sessionId: string, connectionId: string): Promise<{ success: boolean; error?: string }> {
     const db = getDatabase()
-    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId) as any
+    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId) as ConnectionRow | undefined
     if (!row) {
       return { success: false, error: 'Connection not found' }
     }
@@ -58,34 +56,38 @@ class SshManager {
     this.sessions.set(sessionId, session)
     this.setStatus(session, 'connecting')
 
-    return new Promise((resolve) => {
-      const connectConfig: ConnectConfig = {
-        host: row.host,
-        port: row.port,
-        username: row.username,
-        keepaliveInterval: 10000,
-        keepaliveCountMax: 3,
-        readyTimeout: 30000
-      }
+    const connectConfig: ConnectConfig = {
+      host: row.host,
+      port: row.port,
+      username: row.username,
+      keepaliveInterval: 10000,
+      keepaliveCountMax: 3,
+      readyTimeout: 30000
+    }
 
-      // Set up auth
-      const credential = retrieveCredential(connectionId)
+    // Set up auth
+    const credential = retrieveCredential(connectionId)
 
-      if (row.auth_type === 'password') {
-        connectConfig.password = credential || undefined
-      } else if (row.auth_type === 'key' || row.auth_type === 'key+passphrase') {
-        try {
-          const keyPath = row.private_key_path.replace(/^~/, process.env.HOME || '')
-          connectConfig.privateKey = readFileSync(keyPath)
-          if (row.auth_type === 'key+passphrase' && credential) {
-            connectConfig.passphrase = credential
-          }
-        } catch (err: any) {
+    if (row.auth_type === 'password') {
+      connectConfig.password = credential || undefined
+    } else if (row.auth_type === 'key' || row.auth_type === 'key+passphrase') {
+      try {
+        if (!row.private_key_path) {
           this.sessions.delete(sessionId)
-          return resolve({ success: false, error: `Failed to read key: ${err.message}` })
+          return { success: false, error: 'Private key path not configured' }
         }
+        const keyPath = row.private_key_path.replace(/^~/, process.env.HOME || '')
+        connectConfig.privateKey = await readFile(keyPath)
+        if (row.auth_type === 'key+passphrase' && credential) {
+          connectConfig.passphrase = credential
+        }
+      } catch (err: any) {
+        this.sessions.delete(sessionId)
+        return { success: false, error: `Failed to read key: ${err.message}` }
       }
+    }
 
+    return new Promise((resolve) => {
       client.on('ready', () => {
         session.reconnectAttempts = 0
         this.setStatus(session, 'connected')
@@ -100,29 +102,38 @@ class SshManager {
           { term: 'xterm-256color', cols: 80, rows: 24 },
           (err, stream) => {
             if (err) {
+              // Clean up zombie session on shell creation failure
+              this.sessions.delete(sessionId)
               resolve({ success: false, error: err.message })
               return
             }
 
             session.shell = stream
 
-            stream.on('data', (data: Buffer) => {
-              this.emitToRenderer(IPC.SSH_ON_DATA, {
+            const onData = (data: Buffer) => {
+              emitToRenderer(IPC.SSH_ON_DATA, {
                 sessionId,
                 data: data.toString('utf-8')
               })
-            })
+            }
 
-            stream.on('close', () => {
+            const onClose = () => {
               this.handleDisconnect(sessionId)
-            })
+            }
 
-            stream.stderr.on('data', (data: Buffer) => {
-              this.emitToRenderer(IPC.SSH_ON_DATA, {
+            const onStderrData = (data: Buffer) => {
+              emitToRenderer(IPC.SSH_ON_DATA, {
                 sessionId,
                 data: data.toString('utf-8')
               })
-            })
+            }
+
+            stream.on('data', onData)
+            stream.on('close', onClose)
+            stream.stderr.on('data', onStderrData)
+
+            // Store listener refs for cleanup
+            session._streamListeners = { onData, onClose, onStderrData }
 
             // Run startup command if configured
             if (row.startup_command) {
@@ -135,7 +146,7 @@ class SshManager {
       })
 
       client.on('error', (err) => {
-        this.emitToRenderer(IPC.SSH_ON_ERROR, {
+        emitToRenderer(IPC.SSH_ON_ERROR, {
           sessionId,
           error: err.message
         })
@@ -158,14 +169,25 @@ class SshManager {
     })
   }
 
+  private cleanupStreamListeners(session: SshSession): void {
+    if (session.shell && session._streamListeners) {
+      const { onData, onClose, onStderrData } = session._streamListeners
+      session.shell.removeListener('data', onData)
+      session.shell.removeListener('close', onClose)
+      session.shell.stderr.removeListener('data', onStderrData)
+      session._streamListeners = undefined
+    }
+  }
+
   private handleDisconnect(sessionId: string): void {
     const session = this.sessions.get(sessionId)
     if (!session) return
 
     if (session.status === 'disconnected') return
 
+    this.cleanupStreamListeners(session)
     this.setStatus(session, 'disconnected')
-    this.emitToRenderer(IPC.SSH_ON_CLOSE, { sessionId })
+    emitToRenderer(IPC.SSH_ON_CLOSE, { sessionId })
 
     // Auto-reconnect
     this.attemptReconnect(sessionId)
@@ -190,19 +212,26 @@ class SshManager {
       const sess = this.sessions.get(sessionId)
       if (!sess || sess.status === 'connected') return
 
-      // Clean up old client
+      // Clean up old client and stream listeners
+      this.cleanupStreamListeners(sess)
       try {
         sess.client.end()
-      } catch {}
+      } catch (err) {
+        console.error(`[SSH] Error ending client for reconnect ${sessionId}:`, err)
+      }
 
-      // Create new client for reconnect
-      const newClient = new Client()
-      sess.client = newClient
-
+      // Remove session, then reconnect (atomic: connect re-adds it)
+      const connectionId = sess.connectionId
+      const reconnectAttempts = sess.reconnectAttempts
       this.sessions.delete(sessionId)
-      const result = await this.connect(sessionId, sess.connectionId)
+      const result = await this.connect(sessionId, connectionId)
 
       if (!result.success) {
+        // Restore reconnect attempt count on the new session
+        const newSess = this.sessions.get(sessionId)
+        if (newSess) {
+          newSess.reconnectAttempts = reconnectAttempts
+        }
         this.attemptReconnect(sessionId)
       }
     }, delay)
@@ -230,10 +259,14 @@ class SshManager {
       clearTimeout(session.reconnectTimer)
     }
 
+    this.cleanupStreamListeners(session)
+
     try {
       session.shell?.close()
       session.client.end()
-    } catch {}
+    } catch (err) {
+      console.error(`[SSH] Error closing session ${sessionId}:`, err)
+    }
 
     session.status = 'disconnected'
     this.sessions.delete(sessionId)

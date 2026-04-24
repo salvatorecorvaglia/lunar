@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   Folder,
   File,
@@ -110,6 +111,16 @@ export function FileList({
     )
   }
 
+  const ROW_HEIGHT = 32
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: sorted.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10
+  })
+
   if (entries.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -143,36 +154,61 @@ export function FileList({
         </button>
       </div>
 
-      {/* File rows */}
-      <div className="flex-1 overflow-y-auto">
-        {sorted.map((entry) => (
-          <div
-            key={entry.name}
-            className={cn(
-              'group flex items-center text-xs cursor-pointer border-b border-transparent',
-              selection.has(entry.name)
-                ? 'bg-accent/80 border-b-border/30'
-                : 'hover:bg-accent/30'
-            )}
-            onClick={() => onSelect(entry.name)}
-            onDoubleClick={() => onOpen(entry)}
-            draggable={!!onDragStart}
-            onDragStart={(e) => onDragStart?.(entry, e)}
-          >
-            <div className="flex flex-1 items-center gap-2 truncate px-3 py-[7px]">
-              {getFileIcon(entry)}
-              <span className={cn('truncate', entry.isDirectory && 'font-medium')}>
-                {entry.name}
-              </span>
-            </div>
-            <div className="w-20 px-2 py-[7px] text-right text-muted-foreground/70 tabular-nums">
-              {entry.isDirectory ? '\u2014' : formatSize(entry.size)}
-            </div>
-            <div className="w-36 px-3 py-[7px] text-right text-muted-foreground/70 tabular-nums">
-              {formatDate(entry.modifiedAt)}
-            </div>
-          </div>
-        ))}
+      {/* Virtualized file rows */}
+      <div ref={parentRef} className="flex-1 overflow-y-auto">
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative'
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const entry = sorted[virtualRow.index]
+            return (
+              <div
+                key={entry.name}
+                role="button"
+                tabIndex={0}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`
+                }}
+                className={cn(
+                  'group flex items-center text-xs cursor-pointer border-b border-transparent outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  selection.has(entry.name)
+                    ? 'bg-accent/80 border-b-border/30'
+                    : 'hover:bg-accent/30'
+                )}
+                onClick={() => onSelect(entry.name)}
+                onDoubleClick={() => onOpen(entry)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onOpen(entry)
+                  if (e.key === ' ') { e.preventDefault(); onSelect(entry.name) }
+                }}
+                draggable={!!onDragStart}
+                onDragStart={(e) => onDragStart?.(entry, e)}
+              >
+                <div className="flex flex-1 items-center gap-2 truncate px-3 py-[7px]">
+                  {getFileIcon(entry)}
+                  <span className={cn('truncate', entry.isDirectory && 'font-medium')}>
+                    {entry.name}
+                  </span>
+                </div>
+                <div className="w-20 px-2 py-[7px] text-right text-muted-foreground/70 tabular-nums">
+                  {entry.isDirectory ? '\u2014' : formatSize(entry.size)}
+                </div>
+                <div className="w-36 px-3 py-[7px] text-right text-muted-foreground/70 tabular-nums">
+                  {formatDate(entry.modifiedAt)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

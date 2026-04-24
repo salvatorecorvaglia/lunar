@@ -8,17 +8,26 @@ import {
 import { cn } from '@/lib/utils'
 import { FileList } from './FileList'
 
+interface FileEntry {
+  name: string
+  path: string
+  size: number
+  modifiedAt: number
+  isDirectory: boolean
+  isSymlink?: boolean
+}
+
 interface FilePaneProps {
   title: string
   path: string
-  entries: any[]
+  entries: FileEntry[]
   isLoading: boolean
-  error: any
+  error: Error | null
   selection: Set<string>
   onPathChange: (path: string) => void
   onSelect: (name: string) => void
   onRefresh: () => void
-  onDragStart?: (entry: any, e: React.DragEvent) => void
+  onDragStart?: (entry: FileEntry, e: React.DragEvent) => void
   onDrop?: (e: React.DragEvent) => void
   side: 'local' | 'remote'
 }
@@ -59,7 +68,7 @@ export function FilePane({
   }, [path, onPathChange])
 
   const handleOpen = useCallback(
-    (entry: any) => {
+    (entry: FileEntry) => {
       if (entry.isDirectory) {
         onPathChange(entry.path)
       }
@@ -130,7 +139,7 @@ export function FilePane({
       <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border/60 px-2.5 py-1 text-xs no-select">
         <button
           onClick={() => onPathChange('/')}
-          className="flex-shrink-0 rounded p-0.5 text-muted-foreground/70 hover:text-foreground cursor-pointer"
+          className="flex-shrink-0 rounded p-0.5 text-muted-foreground/70 hover:text-foreground hover:bg-accent cursor-pointer"
           title="Root"
         >
           <Home className="h-3 w-3" />

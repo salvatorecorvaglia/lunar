@@ -76,7 +76,7 @@ export function FilePreview() {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-8 z-50 flex flex-col rounded-xl border border-border/80 bg-card shadow-xl overflow-hidden"
+            className="fixed inset-2 z-50 flex flex-col rounded-xl border border-border/80 bg-card shadow-xl overflow-hidden sm:inset-8"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">

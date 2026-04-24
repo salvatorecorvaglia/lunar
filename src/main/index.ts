@@ -7,6 +7,15 @@ import { closeDatabase } from './services/database'
 import { sshManager } from './services/ssh-manager'
 import { initAutoUpdater } from './services/updater'
 
+// Global error handlers
+process.on('uncaughtException', (err) => {
+  console.error('[Main] Uncaught exception:', err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Main] Unhandled rejection:', reason)
+})
+
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {

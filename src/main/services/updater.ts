@@ -1,6 +1,5 @@
 import { autoUpdater } from 'electron-updater'
-import { BrowserWindow } from 'electron'
-import { IPC } from '@shared/constants'
+import { emitToRenderer } from './emit'
 
 let updateAvailable = false
 let updateVersion = ''
@@ -48,14 +47,12 @@ export function checkForUpdate(): { available: boolean; version?: string } {
 export function installUpdate(): void {
   autoUpdater.downloadUpdate().then(() => {
     autoUpdater.quitAndInstall(false, true)
+  }).catch((err) => {
+    console.error('[Updater] Failed to download update:', err.message)
+    notifyRenderer('update-error', { error: err.message })
   })
 }
 
-function notifyRenderer(event: string, data: any): void {
-  const windows = BrowserWindow.getAllWindows()
-  for (const win of windows) {
-    if (!win.isDestroyed()) {
-      win.webContents.send(`app:${event}`, data)
-    }
-  }
+function notifyRenderer(event: string, data: unknown): void {
+  emitToRenderer(`app:${event}`, data)
 }
