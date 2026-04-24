@@ -11,7 +11,7 @@ import {
   useInvalidateSftp,
   useInvalidateLocalDir
 } from '@/hooks/use-sftp'
-import { FilePane } from './FilePane'
+import { FilePane, type FileEntry } from './FilePane'
 import { TransferQueue } from './TransferQueue'
 import { FilePreview } from './FilePreview'
 
@@ -142,13 +142,13 @@ export function SftpManager() {
     [sftpSessionId, remotePath, addTransfer]
   )
 
-  const handleLocalDragStart = useCallback((entry: SftpEntry, e: React.DragEvent) => {
+  const handleLocalDragStart = useCallback((entry: FileEntry, e: React.DragEvent) => {
     e.dataTransfer.setData('local-path', entry.path)
     e.dataTransfer.setData('file-name', entry.name)
     e.dataTransfer.setData('file-size', String(entry.size || 0))
   }, [])
 
-  const handleRemoteDragStart = useCallback((entry: SftpEntry, e: React.DragEvent) => {
+  const handleRemoteDragStart = useCallback((entry: FileEntry, e: React.DragEvent) => {
     e.dataTransfer.setData('remote-path', entry.path)
     e.dataTransfer.setData('file-name', entry.name)
     e.dataTransfer.setData('file-size', String(entry.size || 0))

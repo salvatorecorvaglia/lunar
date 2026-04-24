@@ -3,7 +3,7 @@ import { ChevronRight, Home, RefreshCw, ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FileList } from './FileList'
 
-interface FileEntry {
+export interface FileEntry {
   name: string
   path: string
   size: number
