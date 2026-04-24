@@ -1,6 +1,6 @@
 import { useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Server, Clock, Settings, ChevronRight, Zap, Loader2 } from 'lucide-react'
+import { Plus, Server, Clock, Settings, ChevronRight, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
 import { useConnectionStore } from '@/stores/connection-store'
@@ -10,7 +10,7 @@ import { connectToHost } from '@/components/terminal/TerminalView'
 
 export function Sidebar() {
   const { sidebarOpen, sidebarWidth, setSettingsOpen } = useUIStore()
-  const { openCreateForm, quickConnectValue, setQuickConnectValue } = useConnectionStore()
+  const { openCreateForm } = useConnectionStore()
   const { data: connections, isLoading } = useConnections()
   const connectionList = useMemo(() => connections ?? [], [connections])
 
@@ -34,24 +34,7 @@ export function Sidebar() {
           className="flex h-full flex-col border-r border-border/60 bg-sidebar overflow-hidden no-select"
           style={{ willChange: 'width' }}
         >
-          {/* Quick Connect */}
-          <div className="p-3 pb-2">
-            <div className="relative">
-              <Zap className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70" />
-              <input
-                type="text"
-                placeholder="user@host:port"
-                value={quickConnectValue}
-                onChange={(e) => setQuickConnectValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && quickConnectValue.trim()) {
-                    // TODO: Quick connect logic
-                  }
-                }}
-                className="form-input pl-8 !py-[7px] !text-xs !bg-background/40"
-              />
-            </div>
-          </div>
+
 
           {/* Connections Header */}
           <div className="flex items-center justify-between px-3 py-2">

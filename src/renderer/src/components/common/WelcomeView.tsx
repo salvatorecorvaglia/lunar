@@ -1,4 +1,4 @@
-import { Terminal, FolderOpen, Plus, Zap, Command, ArrowRight } from 'lucide-react'
+import { Terminal, FolderOpen, Plus, Command, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useConnectionStore } from '@/stores/connection-store'
 import { useUIStore } from '@/stores/ui-store'
@@ -20,14 +20,6 @@ const actions = [
     bg: 'bg-blue-500/10 group-hover:bg-blue-500/15',
     title: 'New Connection',
     desc: 'Set up an SSH connection to a server'
-  },
-  {
-    key: 'quick',
-    icon: Zap,
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10 group-hover:bg-emerald-500/15',
-    title: 'Quick Connect',
-    desc: 'Connect with user@host:port format'
   },
   {
     key: 'sftp',
