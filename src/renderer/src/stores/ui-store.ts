@@ -7,7 +7,9 @@ function getInitialTheme(): AppTheme {
   try {
     const saved = localStorage.getItem('lunar-theme')
     if (saved === 'light' || saved === 'dark') return saved
-  } catch {}
+  } catch {
+    // localStorage may be unavailable
+  }
   // Fall back to system preference
   if (
     typeof window !== 'undefined' &&
@@ -22,7 +24,9 @@ function applyTheme(theme: AppTheme): void {
   document.documentElement.classList.toggle('dark', theme === 'dark')
   try {
     localStorage.setItem('lunar-theme', theme)
-  } catch {}
+  } catch {
+    // localStorage may be unavailable
+  }
 }
 
 // Apply on load

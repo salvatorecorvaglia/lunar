@@ -100,8 +100,8 @@ export function SftpManager() {
           bytesPerSec: 0,
           sessionId: sftpSessionId
         })
-      } catch (err: any) {
-        toast.error(`Download failed: ${err.message}`)
+      } catch (err: unknown) {
+        toast.error(`Download failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
     [sftpSessionId, localPath, addTransfer]
@@ -135,20 +135,20 @@ export function SftpManager() {
           bytesPerSec: 0,
           sessionId: sftpSessionId
         })
-      } catch (err: any) {
-        toast.error(`Upload failed: ${err.message}`)
+      } catch (err: unknown) {
+        toast.error(`Upload failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
     [sftpSessionId, remotePath, addTransfer]
   )
 
-  const handleLocalDragStart = useCallback((entry: any, e: React.DragEvent) => {
+  const handleLocalDragStart = useCallback((entry: SftpEntry, e: React.DragEvent) => {
     e.dataTransfer.setData('local-path', entry.path)
     e.dataTransfer.setData('file-name', entry.name)
     e.dataTransfer.setData('file-size', String(entry.size || 0))
   }, [])
 
-  const handleRemoteDragStart = useCallback((entry: any, e: React.DragEvent) => {
+  const handleRemoteDragStart = useCallback((entry: SftpEntry, e: React.DragEvent) => {
     e.dataTransfer.setData('remote-path', entry.path)
     e.dataTransfer.setData('file-name', entry.name)
     e.dataTransfer.setData('file-size', String(entry.size || 0))

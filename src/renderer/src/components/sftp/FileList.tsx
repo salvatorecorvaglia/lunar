@@ -151,6 +151,7 @@ export function FileList({
   const ROW_HEIGHT = 32
   const parentRef = useRef<HTMLDivElement>(null)
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: sorted.length,
     getScrollElement: () => parentRef.current,

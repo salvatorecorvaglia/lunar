@@ -35,7 +35,9 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
             cols: terminal.cols,
             rows: terminal.rows
           })
-        } catch {}
+        } catch {
+          // Resize may fail if terminal is not yet attached
+        }
       }
     }, 100)
   }, [sessionId])

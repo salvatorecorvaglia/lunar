@@ -115,11 +115,9 @@ class TransferQueue {
         // Calculate speed (throttle to every 200ms)
         const now = Date.now()
         const elapsed = (now - transfer.lastEmitTime) / 1000
-        let bytesPerSec = 0
-
         if (elapsed >= 0.2) {
           const delta = transferred - transfer.lastTransferred
-          bytesPerSec = Math.round(delta / elapsed)
+          const bytesPerSec = Math.round(delta / elapsed)
           transfer.lastEmitTime = now
           transfer.lastTransferred = transferred
 
@@ -148,10 +146,10 @@ class TransferQueue {
       } else {
         emitToRenderer(IPC.TRANSFER_COMPLETE, { transferId: id })
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       emitToRenderer(IPC.TRANSFER_ERROR, {
         transferId: id,
-        error: err.message || 'Transfer failed'
+        error: err instanceof Error ? err.message : 'Transfer failed'
       })
     } finally {
       this.active.delete(id)

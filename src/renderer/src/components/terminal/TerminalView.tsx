@@ -63,7 +63,9 @@ export async function connectToHost(connectionId: string): Promise<void> {
     if (conn) {
       connectionName = conn.name
     }
-  } catch {}
+  } catch {
+    // Connection lookup may fail if deleted
+  }
 
   addSession({
     id: sessionId,
@@ -90,8 +92,8 @@ export async function connectToHost(connectionId: string): Promise<void> {
       toast.error(`Connection failed: ${result.error}`)
       updateSessionStatus(sessionId, 'error')
     }
-  } catch (err: any) {
-    toast.error(`Connection error: ${err.message}`)
+  } catch (err: unknown) {
+    toast.error(`Connection error: ${err instanceof Error ? err.message : String(err)}`)
     updateSessionStatus(sessionId, 'error')
   }
 }

@@ -12,7 +12,7 @@ export function Sidebar() {
   const { sidebarOpen, sidebarWidth, setSettingsOpen } = useUIStore()
   const { openCreateForm, quickConnectValue, setQuickConnectValue } = useConnectionStore()
   const { data: connections, isLoading } = useConnections()
-  const connectionList = connections ?? []
+  const connectionList = useMemo(() => connections ?? [], [connections])
 
   const recentConnections = useMemo(
     () =>

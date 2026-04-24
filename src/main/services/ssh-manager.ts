@@ -86,9 +86,9 @@ class SshManager {
         if (row.auth_type === 'key+passphrase' && credential) {
           connectConfig.passphrase = credential
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.sessions.delete(sessionId)
-        return { success: false, error: `Failed to read key: ${err.message}` }
+        return { success: false, error: `Failed to read key: ${err instanceof Error ? err.message : String(err)}` }
       }
     }
 

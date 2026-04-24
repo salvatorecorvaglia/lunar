@@ -63,12 +63,14 @@ export function CommandPalette() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  const prevCommandPaletteOpen = useRef(commandPaletteOpen)
+  if (prevCommandPaletteOpen.current !== commandPaletteOpen) {
+    prevCommandPaletteOpen.current = commandPaletteOpen
     if (commandPaletteOpen) {
       setQuery('')
       setSelectedIndex(0)
     }
-  }, [commandPaletteOpen])
+  }
 
   const commands: Command[] = useMemo(() => {
     const cmds: Command[] = [
@@ -197,9 +199,11 @@ export function CommandPalette() {
     return groups
   }, [filtered])
 
-  useEffect(() => {
+  const prevQuery = useRef(query)
+  if (prevQuery.current !== query) {
+    prevQuery.current = query
     setSelectedIndex(0)
-  }, [query])
+  }
 
   // Scroll selected item into view
   useEffect(() => {

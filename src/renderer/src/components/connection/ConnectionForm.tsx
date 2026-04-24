@@ -93,6 +93,22 @@ export function ConnectionForm() {
     return () => window.removeEventListener('keydown', handler)
   }, [connectionFormOpen, closeForm])
 
+  const resetForm = useCallback(() => {
+    setName('')
+    setHost('')
+    setPort('22')
+    setUsername('')
+    setAuthType('password')
+    setPassword('')
+    setPrivateKeyPath('')
+    setPassphrase('')
+    setFolder('default')
+    setColorTag('#22c55e')
+    setStartupCommand('')
+    setShowPassword(false)
+    setTouched({})
+  }, [])
+
   useEffect(() => {
     if (editingConnection) {
       setName(editingConnection.name)
@@ -110,23 +126,7 @@ export function ConnectionForm() {
       resetForm()
     }
     setTouched({})
-  }, [editingConnection, connectionFormOpen])
-
-  function resetForm() {
-    setName('')
-    setHost('')
-    setPort('22')
-    setUsername('')
-    setAuthType('password')
-    setPassword('')
-    setPrivateKeyPath('')
-    setPassphrase('')
-    setFolder('default')
-    setColorTag('#22c55e')
-    setStartupCommand('')
-    setShowPassword(false)
-    setTouched({})
-  }
+  }, [editingConnection, connectionFormOpen, resetForm])
 
   const markTouched = useCallback((field: string) => {
     setTouched((prev) => ({ ...prev, [field]: true }))
@@ -169,8 +169,8 @@ export function ConnectionForm() {
         toast.success('Connection created')
       }
       closeForm()
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save connection')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save connection')
     }
   }
 
