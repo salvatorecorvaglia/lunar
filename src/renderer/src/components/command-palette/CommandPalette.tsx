@@ -63,9 +63,9 @@ export function CommandPalette() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const prevCommandPaletteOpen = useRef(commandPaletteOpen)
-  if (prevCommandPaletteOpen.current !== commandPaletteOpen) {
-    prevCommandPaletteOpen.current = commandPaletteOpen
+  const [prevCommandPaletteOpen, setPrevCommandPaletteOpen] = useState(commandPaletteOpen)
+  if (prevCommandPaletteOpen !== commandPaletteOpen) {
+    setPrevCommandPaletteOpen(commandPaletteOpen)
     if (commandPaletteOpen) {
       setQuery('')
       setSelectedIndex(0)
@@ -199,9 +199,9 @@ export function CommandPalette() {
     return groups
   }, [filtered])
 
-  const prevQuery = useRef(query)
-  if (prevQuery.current !== query) {
-    prevQuery.current = query
+  const [prevQuery, setPrevQuery] = useState(query)
+  if (prevQuery !== query) {
+    setPrevQuery(query)
     setSelectedIndex(0)
   }
 
