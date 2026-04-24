@@ -39,16 +39,19 @@ export function registerShellHandlers(): void {
     return homedir()
   })
 
-  ipcMain.handle(IPC.SHELL_OPEN_FILE_DIALOG, async (_event, options?: { filters?: { name: string; extensions: string[] }[] }) => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openFile'],
-      filters: options?.filters
-    })
+  ipcMain.handle(
+    IPC.SHELL_OPEN_FILE_DIALOG,
+    async (_event, options?: { filters?: { name: string; extensions: string[] }[] }) => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openFile'],
+        filters: options?.filters
+      })
 
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
+      if (result.canceled || result.filePaths.length === 0) {
+        return null
+      }
+
+      return result.filePaths[0]
     }
-
-    return result.filePaths[0]
-  })
+  )
 }

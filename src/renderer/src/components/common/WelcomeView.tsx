@@ -85,7 +85,9 @@ export function WelcomeView() {
               onClick={() => handleAction(action.key)}
               className="group flex w-full items-center gap-3.5 rounded-xl border border-border/80 bg-card/80 p-4 text-left hover:border-border hover:bg-accent/50 cursor-pointer"
             >
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.bg}`}>
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.bg}`}
+              >
                 <action.icon className={`h-5 w-5 ${action.color}`} />
               </div>
               <div className="min-w-0 flex-1">

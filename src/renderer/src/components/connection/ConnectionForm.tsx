@@ -33,8 +33,14 @@ const AUTH_TYPES: { value: AuthType; label: string; icon: React.ReactNode }[] = 
 ]
 
 const COLOR_OPTIONS = [
-  '#22c55e', '#3b82f6', '#a855f7', '#f43f5e',
-  '#f97316', '#eab308', '#06b6d4', '#ec4899'
+  '#22c55e',
+  '#3b82f6',
+  '#a855f7',
+  '#f43f5e',
+  '#f97316',
+  '#eab308',
+  '#06b6d4',
+  '#ec4899'
 ]
 
 const overlayVariants = {
@@ -45,7 +51,12 @@ const overlayVariants = {
 
 const dialogVariants = {
   initial: { opacity: 0, scale: 0.96, y: 12 },
-  animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] } },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
+  },
   exit: { opacity: 0, scale: 0.96, y: 12, transition: { duration: 0.15 } }
 }
 
@@ -208,11 +219,7 @@ export function ConnectionForm() {
                     {isEditing ? 'Edit Connection' : 'New Connection'}
                   </h2>
                 </div>
-                <button
-                  onClick={closeForm}
-                  className="btn-icon"
-                  aria-label="Close"
-                >
+                <button onClick={closeForm} className="btn-icon" aria-label="Close">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -220,14 +227,21 @@ export function ConnectionForm() {
               {/* Form */}
               <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 {/* Name */}
-                <FormField label="Connection Name" icon={<Server className="h-3.5 w-3.5" />} required>
+                <FormField
+                  label="Connection Name"
+                  icon={<Server className="h-3.5 w-3.5" />}
+                  required
+                >
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     onBlur={() => markTouched('name')}
                     placeholder="My Server"
-                    className={cn('form-input', fieldError('name', name) && 'border-destructive/60 focus:border-destructive')}
+                    className={cn(
+                      'form-input',
+                      fieldError('name', name) && 'border-destructive/60 focus:border-destructive'
+                    )}
                     autoFocus
                   />
                 </FormField>
@@ -242,7 +256,11 @@ export function ConnectionForm() {
                         onChange={(e) => setHost(e.target.value)}
                         onBlur={() => markTouched('host')}
                         placeholder="192.168.1.100"
-                        className={cn('form-input', fieldError('host', host) && 'border-destructive/60 focus:border-destructive')}
+                        className={cn(
+                          'form-input',
+                          fieldError('host', host) &&
+                            'border-destructive/60 focus:border-destructive'
+                        )}
                       />
                     </FormField>
                   </div>
@@ -265,7 +283,11 @@ export function ConnectionForm() {
                     onChange={(e) => setUsername(e.target.value)}
                     onBlur={() => markTouched('username')}
                     placeholder="root"
-                    className={cn('form-input', fieldError('username', username) && 'border-destructive/60 focus:border-destructive')}
+                    className={cn(
+                      'form-input',
+                      fieldError('username', username) &&
+                        'border-destructive/60 focus:border-destructive'
+                    )}
                   />
                 </FormField>
 
@@ -340,7 +362,10 @@ export function ConnectionForm() {
                       transition={{ duration: 0.15 }}
                       className="space-y-4"
                     >
-                      <FormField label="Private Key Path" icon={<FileKey className="h-3.5 w-3.5" />}>
+                      <FormField
+                        label="Private Key Path"
+                        icon={<FileKey className="h-3.5 w-3.5" />}
+                      >
                         <div className="flex gap-2">
                           <input
                             type="text"

@@ -34,9 +34,14 @@ class SshManager {
     })
   }
 
-  async connect(sessionId: string, connectionId: string): Promise<{ success: boolean; error?: string }> {
+  async connect(
+    sessionId: string,
+    connectionId: string
+  ): Promise<{ success: boolean; error?: string }> {
     const db = getDatabase()
-    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId) as ConnectionRow | undefined
+    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId) as
+      | ConnectionRow
+      | undefined
     if (!row) {
       return { success: false, error: 'Connection not found' }
     }
@@ -98,51 +103,48 @@ class SshManager {
           connectionId
         )
 
-        client.shell(
-          { term: 'xterm-256color', cols: 80, rows: 24 },
-          (err, stream) => {
-            if (err) {
-              // Clean up zombie session on shell creation failure
-              this.sessions.delete(sessionId)
-              resolve({ success: false, error: err.message })
-              return
-            }
-
-            session.shell = stream
-
-            const onData = (data: Buffer) => {
-              emitToRenderer(IPC.SSH_ON_DATA, {
-                sessionId,
-                data: data.toString('utf-8')
-              })
-            }
-
-            const onClose = () => {
-              this.handleDisconnect(sessionId)
-            }
-
-            const onStderrData = (data: Buffer) => {
-              emitToRenderer(IPC.SSH_ON_DATA, {
-                sessionId,
-                data: data.toString('utf-8')
-              })
-            }
-
-            stream.on('data', onData)
-            stream.on('close', onClose)
-            stream.stderr.on('data', onStderrData)
-
-            // Store listener refs for cleanup
-            session._streamListeners = { onData, onClose, onStderrData }
-
-            // Run startup command if configured
-            if (row.startup_command) {
-              stream.write(row.startup_command + '\n')
-            }
-
-            resolve({ success: true })
+        client.shell({ term: 'xterm-256color', cols: 80, rows: 24 }, (err, stream) => {
+          if (err) {
+            // Clean up zombie session on shell creation failure
+            this.sessions.delete(sessionId)
+            resolve({ success: false, error: err.message })
+            return
           }
-        )
+
+          session.shell = stream
+
+          const onData = (data: Buffer) => {
+            emitToRenderer(IPC.SSH_ON_DATA, {
+              sessionId,
+              data: data.toString('utf-8')
+            })
+          }
+
+          const onClose = () => {
+            this.handleDisconnect(sessionId)
+          }
+
+          const onStderrData = (data: Buffer) => {
+            emitToRenderer(IPC.SSH_ON_DATA, {
+              sessionId,
+              data: data.toString('utf-8')
+            })
+          }
+
+          stream.on('data', onData)
+          stream.on('close', onClose)
+          stream.stderr.on('data', onStderrData)
+
+          // Store listener refs for cleanup
+          session._streamListeners = { onData, onClose, onStderrData }
+
+          // Run startup command if configured
+          if (row.startup_command) {
+            stream.write(row.startup_command + '\n')
+          }
+
+          resolve({ success: true })
+        })
       })
 
       client.on('error', (err) => {

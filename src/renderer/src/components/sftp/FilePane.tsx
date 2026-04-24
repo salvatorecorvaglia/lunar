@@ -1,10 +1,5 @@
 import { useCallback, useState } from 'react'
-import {
-  ChevronRight,
-  Home,
-  RefreshCw,
-  ArrowUp
-} from 'lucide-react'
+import { ChevronRight, Home, RefreshCw, ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FileList } from './FileList'
 
@@ -107,21 +102,18 @@ export function FilePane({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2.5 py-1.5 no-select">
         <div className="flex items-center gap-1.5">
-          <span className={cn(
-            'inline-block h-2 w-2 rounded-full',
-            side === 'local' ? 'bg-blue-500' : 'bg-emerald-500'
-          )} />
+          <span
+            className={cn(
+              'inline-block h-2 w-2 rounded-full',
+              side === 'local' ? 'bg-blue-500' : 'bg-emerald-500'
+            )}
+          />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {title}
           </span>
         </div>
         <div className="flex items-center gap-0.5">
-          <button
-            onClick={navigateUp}
-            className="btn-icon !p-1"
-            title="Go up"
-            aria-label="Go up"
-          >
+          <button onClick={navigateUp} className="btn-icon !p-1" title="Go up" aria-label="Go up">
             <ArrowUp className="h-3.5 w-3.5" />
           </button>
           <button
@@ -162,7 +154,9 @@ export function FilePane({
       <div className="flex-1 overflow-hidden">
         {error ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-            <span className="text-xs text-destructive">{error.message || 'Failed to load directory'}</span>
+            <span className="text-xs text-destructive">
+              {error.message || 'Failed to load directory'}
+            </span>
             <button
               onClick={onRefresh}
               className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"

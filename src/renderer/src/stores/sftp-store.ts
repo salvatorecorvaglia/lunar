@@ -45,8 +45,7 @@ export const useSftpStore = create<SftpState>((set) => ({
       else next.add(name)
       return { remoteSelection: next }
     }),
-  clearSelections: () =>
-    set({ localSelection: new Set(), remoteSelection: new Set() }),
+  clearSelections: () => set({ localSelection: new Set(), remoteSelection: new Set() }),
   setPreviewFile: (file) => set({ previewFile: file }),
   setSftpSessionId: (id) => set({ sftpSessionId: id })
 }))

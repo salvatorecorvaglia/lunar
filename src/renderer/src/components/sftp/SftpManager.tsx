@@ -5,7 +5,12 @@ import { useSftpStore } from '@/stores/sftp-store'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useTransferStore } from '@/stores/transfer-store'
 import { useConnectionStore } from '@/stores/connection-store'
-import { useSftpDirectory, useLocalDirectory, useInvalidateSftp, useInvalidateLocalDir } from '@/hooks/use-sftp'
+import {
+  useSftpDirectory,
+  useLocalDirectory,
+  useInvalidateSftp,
+  useInvalidateLocalDir
+} from '@/hooks/use-sftp'
 import { FilePane } from './FilePane'
 import { TransferQueue } from './TransferQueue'
 import { FilePreview } from './FilePreview'
@@ -44,17 +49,26 @@ export function SftpManager() {
   // Set local path to home directory on mount
   useEffect(() => {
     if (!localPath) {
-      window.api.shell.homeDir().then(setLocalPath).catch(() => {
-        setLocalPath('/')
-      })
+      window.api.shell
+        .homeDir()
+        .then(setLocalPath)
+        .catch(() => {
+          setLocalPath('/')
+        })
     }
   }, [localPath, setLocalPath])
 
-  const { data: remoteEntries = [], isLoading: remoteLoading, error: remoteError } =
-    useSftpDirectory(sftpSessionId, remotePath)
+  const {
+    data: remoteEntries = [],
+    isLoading: remoteLoading,
+    error: remoteError
+  } = useSftpDirectory(sftpSessionId, remotePath)
 
-  const { data: localEntries = [], isLoading: localLoading, error: localError } =
-    useLocalDirectory(localPath)
+  const {
+    data: localEntries = [],
+    isLoading: localLoading,
+    error: localError
+  } = useLocalDirectory(localPath)
 
   const { addTransfer } = useTransferStore()
 
@@ -141,30 +155,27 @@ export function SftpManager() {
   }, [])
 
   // Resize handle
-  const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      setResizing(true)
-      const onMouseMove = (e: MouseEvent) => {
-        if (!containerRef.current) return
-        const rect = containerRef.current.getBoundingClientRect()
-        const ratio = (e.clientX - rect.left) / rect.width
-        setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)))
-      }
-      const onMouseUp = () => {
-        setResizing(false)
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-      }
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
-    },
-    []
-  )
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setResizing(true)
+    const onMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const ratio = (e.clientX - rect.left) / rect.width
+      setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)))
+    }
+    const onMouseUp = () => {
+      setResizing(false)
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [])
 
   if (!sftpSessionId || !sessions.get(sftpSessionId)) {
     return (

@@ -37,13 +37,25 @@ const overlayVariants = {
 
 const dialogVariants = {
   initial: { opacity: 0, y: -10, scale: 0.98 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] } },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }
+  },
   exit: { opacity: 0, y: -10, scale: 0.98, transition: { duration: 0.1 } }
 }
 
 export function CommandPalette() {
-  const { commandPaletteOpen, setCommandPaletteOpen, setActiveView, toggleSidebar, theme, setTheme, setSettingsOpen } =
-    useUIStore()
+  const {
+    commandPaletteOpen,
+    setCommandPaletteOpen,
+    setActiveView,
+    toggleSidebar,
+    theme,
+    setTheme,
+    setSettingsOpen
+  } = useUIStore()
   const { setTerminalTheme } = useTerminalStore()
   const { openCreateForm } = useConnectionStore()
   const { data: connections = [] } = useConnections()
@@ -151,7 +163,16 @@ export function CommandPalette() {
     }
 
     return cmds
-  }, [connections, theme, openCreateForm, setActiveView, toggleSidebar, setTheme, setSettingsOpen, setTerminalTheme])
+  }, [
+    connections,
+    theme,
+    openCreateForm,
+    setActiveView,
+    toggleSidebar,
+    setTheme,
+    setSettingsOpen,
+    setTerminalTheme
+  ])
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands
@@ -270,15 +291,15 @@ export function CommandPalette() {
                             onMouseEnter={() => setSelectedIndex(index)}
                             className={cn(
                               'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm cursor-pointer',
-                              isSelected
-                                ? 'bg-accent text-foreground'
-                                : 'text-muted-foreground'
+                              isSelected ? 'bg-accent text-foreground' : 'text-muted-foreground'
                             )}
                           >
-                            <div className={cn(
-                              'flex-shrink-0',
-                              isSelected ? 'text-foreground' : 'text-muted-foreground/60'
-                            )}>
+                            <div
+                              className={cn(
+                                'flex-shrink-0',
+                                isSelected ? 'text-foreground' : 'text-muted-foreground/60'
+                              )}
+                            >
                               {cmd.icon}
                             </div>
                             <div className="min-w-0 flex-1">

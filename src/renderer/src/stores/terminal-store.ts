@@ -51,11 +51,12 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       const tabOrder = s.tabOrder.filter((id) => id !== sessionId)
       const activeTabId =
         s.activeTabId === sessionId ? tabOrder[tabOrder.length - 1] || null : s.activeTabId
-      const splitTree = tabOrder.length === 0
-        ? null
-        : activeTabId
-          ? { type: 'terminal' as const, sessionId: activeTabId }
-          : null
+      const splitTree =
+        tabOrder.length === 0
+          ? null
+          : activeTabId
+            ? { type: 'terminal' as const, sessionId: activeTabId }
+            : null
       return { sessions, tabOrder, activeTabId, splitTree }
     }),
 

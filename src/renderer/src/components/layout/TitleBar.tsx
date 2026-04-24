@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Minus, Maximize2, Minimize2, X, Moon, Sun, Terminal, FolderOpen, PanelLeft } from 'lucide-react'
+import {
+  Minus,
+  Maximize2,
+  Minimize2,
+  X,
+  Moon,
+  Sun,
+  Terminal,
+  FolderOpen,
+  PanelLeft
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
 
@@ -72,11 +82,7 @@ export function TitleBar() {
 
         <div className="mx-1.5 h-3.5 w-px bg-border/60" />
 
-        <button
-          onClick={handleMinimize}
-          className="btn-icon"
-          aria-label="Minimize"
-        >
+        <button onClick={handleMinimize} className="btn-icon" aria-label="Minimize">
           <Minus className="h-3.5 w-3.5" />
         </button>
         <button
@@ -84,7 +90,11 @@ export function TitleBar() {
           className="btn-icon"
           aria-label={isMaximized ? 'Restore' : 'Maximize'}
         >
-          {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          {isMaximized ? (
+            <Minimize2 className="h-3.5 w-3.5" />
+          ) : (
+            <Maximize2 className="h-3.5 w-3.5" />
+          )}
         </button>
         <button
           onClick={handleClose}

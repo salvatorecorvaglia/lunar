@@ -1,14 +1,6 @@
 import { useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Plus,
-  Server,
-  Clock,
-  Settings,
-  ChevronRight,
-  Zap,
-  Loader2
-} from 'lucide-react'
+import { Plus, Server, Clock, Settings, ChevronRight, Zap, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
 import { useConnectionStore } from '@/stores/connection-store'
@@ -93,7 +85,9 @@ export function Sidebar() {
             ) : connectionList.length === 0 ? (
               <div className="px-3 py-10 text-center">
                 <Server className="mx-auto h-8 w-8 text-muted-foreground/30" />
-                <p className="mt-3 text-xs font-medium text-muted-foreground/70">No connections yet</p>
+                <p className="mt-3 text-xs font-medium text-muted-foreground/70">
+                  No connections yet
+                </p>
                 <button
                   onClick={() => openCreateForm()}
                   className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sidebar-primary hover:underline"
@@ -160,7 +154,8 @@ const ConnectionItem = memo(function ConnectionItem({
     (s) => s.connectionId === connection.id && s.status === 'connected'
   )
   const isConnecting = Array.from(sessions.values()).some(
-    (s) => s.connectionId === connection.id && (s.status === 'connecting' || s.status === 'reconnecting')
+    (s) =>
+      s.connectionId === connection.id && (s.status === 'connecting' || s.status === 'reconnecting')
   )
 
   const handleConnect = () => {

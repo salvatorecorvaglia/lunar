@@ -19,11 +19,7 @@ import type {
   SftpTransferParams,
   LocalFileEntry
 } from './sftp'
-import type {
-  TransferProgressEvent,
-  TransferCompleteEvent,
-  TransferErrorEvent
-} from './transfer'
+import type { TransferProgressEvent, TransferCompleteEvent, TransferErrorEvent } from './transfer'
 import type { AppSettings } from './settings'
 
 // Request-response IPC (invoke/handle)
@@ -53,7 +49,10 @@ export interface IpcHandlerMap {
   // Local filesystem
   'shell:readdir': { request: string; response: LocalFileEntry[] }
   'shell:home-dir': { request: void; response: string }
-  'shell:open-file-dialog': { request: { filters?: { name: string; extensions: string[] }[] }; response: string | null }
+  'shell:open-file-dialog': {
+    request: { filters?: { name: string; extensions: string[] }[] }
+    response: string | null
+  }
 
   // Credentials
   'credential:store': { request: { connectionId: string; secret: string }; response: void }

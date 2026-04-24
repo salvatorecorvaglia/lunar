@@ -1,10 +1,6 @@
 import { ipcMain } from 'electron'
 import { IPC } from '@shared/constants'
-import {
-  storeCredential,
-  retrieveCredential,
-  deleteCredential
-} from '../services/credential-store'
+import { storeCredential, retrieveCredential, deleteCredential } from '../services/credential-store'
 
 export function registerCredentialHandlers(): void {
   ipcMain.handle(

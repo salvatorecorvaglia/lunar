@@ -35,7 +35,9 @@ export function TerminalView() {
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-white/40">No active sessions</p>
-              <p className="mt-1 text-xs text-white/20">Select a connection from the sidebar to begin</p>
+              <p className="mt-1 text-xs text-white/20">
+                Select a connection from the sidebar to begin
+              </p>
             </div>
             <button
               onClick={handleNewTab}

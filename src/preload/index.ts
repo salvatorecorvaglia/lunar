@@ -1,9 +1,28 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/constants'
-import type { SshDataEvent, SshCloseEvent, SshErrorEvent, SshStatusEvent, SshConnectParams, SshSendDataParams, SshResizeParams } from '@shared/types/terminal'
-import type { TransferProgressEvent, TransferCompleteEvent, TransferErrorEvent } from '@shared/types/transfer'
+import type {
+  SshDataEvent,
+  SshCloseEvent,
+  SshErrorEvent,
+  SshStatusEvent,
+  SshConnectParams,
+  SshSendDataParams,
+  SshResizeParams
+} from '@shared/types/terminal'
+import type {
+  TransferProgressEvent,
+  TransferCompleteEvent,
+  TransferErrorEvent
+} from '@shared/types/transfer'
 import type { CreateConnectionInput, UpdateConnectionInput } from '@shared/types/connection'
-import type { SftpListParams, SftpMkdirParams, SftpRenameParams, SftpDeleteParams, SftpReadFileParams, SftpTransferParams } from '@shared/types/sftp'
+import type {
+  SftpListParams,
+  SftpMkdirParams,
+  SftpRenameParams,
+  SftpDeleteParams,
+  SftpReadFileParams,
+  SftpTransferParams
+} from '@shared/types/sftp'
 
 type CleanupFn = () => void
 

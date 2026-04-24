@@ -139,10 +139,6 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
   }, [sessionId, handleResize, terminalTheme])
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full overflow-hidden"
-      style={{ padding: '4px' }}
-    />
+    <div ref={containerRef} className="h-full w-full overflow-hidden" style={{ padding: '4px' }} />
   )
 }

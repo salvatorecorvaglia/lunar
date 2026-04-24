@@ -27,17 +27,17 @@ export function StatusBar() {
             ) : (
               <WifiOff className="h-3.5 w-3.5 text-destructive" />
             )}
-            <span className="font-medium text-foreground/80">
-              {activeSession.connectionName}
-            </span>
-            <span className={cn(
-              'rounded-full px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider',
-              activeSession.status === 'connected'
-                ? 'bg-emerald-500/10 text-emerald-500'
-                : activeSession.status === 'error'
-                  ? 'bg-red-500/10 text-red-400'
-                  : 'bg-amber-500/10 text-amber-500'
-            )}>
+            <span className="font-medium text-foreground/80">{activeSession.connectionName}</span>
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider',
+                activeSession.status === 'connected'
+                  ? 'bg-emerald-500/10 text-emerald-500'
+                  : activeSession.status === 'error'
+                    ? 'bg-red-500/10 text-red-400'
+                    : 'bg-amber-500/10 text-amber-500'
+              )}
+            >
               {activeSession.status}
             </span>
           </div>

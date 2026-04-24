@@ -45,12 +45,15 @@ export function checkForUpdate(): { available: boolean; version?: string } {
 }
 
 export function installUpdate(): void {
-  autoUpdater.downloadUpdate().then(() => {
-    autoUpdater.quitAndInstall(false, true)
-  }).catch((err) => {
-    console.error('[Updater] Failed to download update:', err.message)
-    notifyRenderer('update-error', { error: err.message })
-  })
+  autoUpdater
+    .downloadUpdate()
+    .then(() => {
+      autoUpdater.quitAndInstall(false, true)
+    })
+    .catch((err) => {
+      console.error('[Updater] Failed to download update:', err.message)
+      notifyRenderer('update-error', { error: err.message })
+    })
 }
 
 function notifyRenderer(event: string, data: unknown): void {

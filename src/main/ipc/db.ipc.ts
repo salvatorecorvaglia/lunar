@@ -2,7 +2,11 @@ import { ipcMain } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
 import { IPC } from '@shared/constants'
 import { getDatabase, type ConnectionRow } from '../services/database'
-import type { Connection, CreateConnectionInput, UpdateConnectionInput } from '@shared/types/connection'
+import type {
+  Connection,
+  CreateConnectionInput,
+  UpdateConnectionInput
+} from '@shared/types/connection'
 import { storeCredential, deleteCredential } from '../services/credential-store'
 
 function rowToConnection(row: ConnectionRow): Connection {
@@ -32,7 +36,9 @@ export function registerDbHandlers(): void {
   })
 
   ipcMain.handle(IPC.CONNECTION_GET, (_event, id: string) => {
-    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(id) as ConnectionRow | undefined
+    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(id) as
+      | ConnectionRow
+      | undefined
     return row ? rowToConnection(row) : null
   })
 
@@ -48,10 +54,12 @@ export function registerDbHandlers(): void {
     const id = uuidv4()
     const now = Math.floor(Date.now() / 1000)
 
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO connections (id, name, host, port, username, auth_type, private_key_path, folder, color_tag, startup_command, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+    `
+    ).run(
       id,
       input.name,
       input.host,
@@ -79,7 +87,9 @@ export function registerDbHandlers(): void {
 
   ipcMain.handle(IPC.CONNECTION_UPDATE, (_event, input: UpdateConnectionInput) => {
     const now = Math.floor(Date.now() / 1000)
-    const existing = db.prepare('SELECT * FROM connections WHERE id = ?').get(input.id) as ConnectionRow | undefined
+    const existing = db.prepare('SELECT * FROM connections WHERE id = ?').get(input.id) as
+      | ConnectionRow
+      | undefined
 
     if (!existing) {
       throw new Error(`Connection not found: ${input.id}`)
@@ -158,7 +168,10 @@ export function registerDbHandlers(): void {
   })
 
   ipcMain.handle(IPC.SETTINGS_GET_ALL, () => {
-    const rows = db.prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[]
+    const rows = db.prepare('SELECT key, value FROM settings').all() as {
+      key: string
+      value: string
+    }[]
     const settings: Record<string, unknown> = {}
     for (const row of rows) {
       try {

@@ -43,11 +43,43 @@ function getFileIcon(entry: FileEntry) {
 
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext || ''))
     return <FileImage className="h-4 w-4 text-pink-400" />
-  if (['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'sh', 'bash'].includes(ext || ''))
+  if (
+    [
+      'js',
+      'ts',
+      'jsx',
+      'tsx',
+      'py',
+      'rb',
+      'go',
+      'rs',
+      'java',
+      'c',
+      'cpp',
+      'h',
+      'sh',
+      'bash'
+    ].includes(ext || '')
+  )
     return <FileCode className="h-4 w-4 text-green-400" />
   if (['zip', 'tar', 'gz', 'bz2', 'xz', '7z', 'rar'].includes(ext || ''))
     return <FileArchive className="h-4 w-4 text-yellow-400" />
-  if (['md', 'txt', 'log', 'csv', 'json', 'xml', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf'].includes(ext || ''))
+  if (
+    [
+      'md',
+      'txt',
+      'log',
+      'csv',
+      'json',
+      'xml',
+      'yaml',
+      'yml',
+      'toml',
+      'ini',
+      'cfg',
+      'conf'
+    ].includes(ext || '')
+  )
     return <FileText className="h-4 w-4 text-muted-foreground" />
 
   return <File className="h-4 w-4 text-muted-foreground" />
@@ -66,7 +98,12 @@ function formatDate(timestamp: number): string {
   const isThisYear = date.getFullYear() === now.getFullYear()
 
   if (isThisYear) {
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
@@ -188,7 +225,10 @@ export function FileList({
                 onDoubleClick={() => onOpen(entry)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') onOpen(entry)
-                  if (e.key === ' ') { e.preventDefault(); onSelect(entry.name) }
+                  if (e.key === ' ') {
+                    e.preventDefault()
+                    onSelect(entry.name)
+                  }
                 }}
                 draggable={!!onDragStart}
                 onDragStart={(e) => onDragStart?.(entry, e)}

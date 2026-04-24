@@ -14,11 +14,7 @@ export function SplitPane({ node }: SplitPaneProps) {
   return <SplitContainer node={node} />
 }
 
-function SplitContainer({
-  node
-}: {
-  node: Extract<PaneNode, { type: 'split' }>
-}) {
+function SplitContainer({ node }: { node: Extract<PaneNode, { type: 'split' }> }) {
   const [ratio, setRatio] = useState(node.ratio)
   const [dragging, setDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)

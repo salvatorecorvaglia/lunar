@@ -9,7 +9,10 @@ function getInitialTheme(): AppTheme {
     if (saved === 'light' || saved === 'dark') return saved
   } catch {}
   // Fall back to system preference
-  if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: light)').matches) {
+  if (
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-color-scheme: light)').matches
+  ) {
     return 'light'
   }
   return 'dark'
