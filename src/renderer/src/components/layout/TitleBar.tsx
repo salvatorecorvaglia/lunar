@@ -17,6 +17,8 @@ export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false)
   const { theme, toggleTheme, activeView, setActiveView, toggleSidebar, sidebarOpen } = useUIStore()
 
+  const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+
   useEffect(() => {
     const check = async () => setIsMaximized(await window.api.window.isMaximized())
     check()
@@ -30,7 +32,12 @@ export function TitleBar() {
   const handleClose = () => window.api.window.close()
 
   return (
-    <div className="drag-region flex h-11 items-center justify-between border-b border-border/60 bg-card/80 backdrop-blur-md px-2 no-select">
+    <div
+      className={cn(
+        'drag-region flex h-11 items-center justify-between border-b border-border/60 bg-card/80 backdrop-blur-md px-2 no-select',
+        isMac && 'pl-[76px]'
+      )}
+    >
       {/* Left: logo + sidebar toggle + view switcher */}
       <div className="no-drag flex items-center gap-1.5">
         {/* Logo */}
@@ -80,29 +87,33 @@ export function TitleBar() {
           {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
         </button>
 
-        <div className="mx-1.5 h-3.5 w-px bg-border/60" />
+        {!isMac && (
+          <>
+            <div className="mx-1.5 h-3.5 w-px bg-border/60" />
 
-        <button onClick={handleMinimize} className="btn-icon" aria-label="Minimize">
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={handleMaximize}
-          className="btn-icon"
-          aria-label={isMaximized ? 'Restore' : 'Maximize'}
-        >
-          {isMaximized ? (
-            <Minimize2 className="h-3.5 w-3.5" />
-          ) : (
-            <Maximize2 className="h-3.5 w-3.5" />
-          )}
-        </button>
-        <button
-          onClick={handleClose}
-          className="btn-icon hover:!bg-red-500/90 hover:!text-white"
-          aria-label="Close"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+            <button onClick={handleMinimize} className="btn-icon" aria-label="Minimize">
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={handleMaximize}
+              className="btn-icon"
+              aria-label={isMaximized ? 'Restore' : 'Maximize'}
+            >
+              {isMaximized ? (
+                <Minimize2 className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <button
+              onClick={handleClose}
+              className="btn-icon hover:!bg-red-500/90 hover:!text-white"
+              aria-label="Close"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
