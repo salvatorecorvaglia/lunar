@@ -149,11 +149,13 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
 
     // Sync session status from main process
     const { updateSessionStatus } = useTerminalStore.getState()
-    const cleanupStatus = window.api.ssh.onStatus((event: { sessionId: string; status: SessionStatus }) => {
-      if (event.sessionId === sessionId) {
-        updateSessionStatus(sessionId, event.status)
+    const cleanupStatus = window.api.ssh.onStatus(
+      (event: { sessionId: string; status: SessionStatus }) => {
+        if (event.sessionId === sessionId) {
+          updateSessionStatus(sessionId, event.status)
+        }
       }
-    })
+    )
 
     // ResizeObserver for container size changes
     const observer = new ResizeObserver(handleResize)
@@ -229,20 +231,39 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                e.shiftKey ? findPrevious() : findNext()
+                if (e.shiftKey) {
+                  findPrevious()
+                } else {
+                  findNext()
+                }
               }
               if (e.key === 'Escape') closeSearch()
             }}
             placeholder="Search..."
             className="w-40 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
           />
-          <button onClick={findPrevious} className="btn-icon !p-0.5" title="Previous" aria-label="Previous match">
+          <button
+            onClick={findPrevious}
+            className="btn-icon !p-0.5"
+            title="Previous"
+            aria-label="Previous match"
+          >
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
-          <button onClick={findNext} className="btn-icon !p-0.5" title="Next" aria-label="Next match">
+          <button
+            onClick={findNext}
+            className="btn-icon !p-0.5"
+            title="Next"
+            aria-label="Next match"
+          >
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
-          <button onClick={closeSearch} className="btn-icon !p-0.5" title="Close" aria-label="Close search">
+          <button
+            onClick={closeSearch}
+            className="btn-icon !p-0.5"
+            title="Close"
+            aria-label="Close search"
+          >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

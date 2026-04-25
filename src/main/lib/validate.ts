@@ -7,7 +7,12 @@ export function assertNonEmptyString(value: unknown, name: string): asserts valu
   }
 }
 
-export function assertBoundedInt(value: unknown, name: string, min: number, max: number): asserts value is number {
+export function assertBoundedInt(
+  value: unknown,
+  name: string,
+  min: number,
+  max: number
+): asserts value is number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
     throw new Error(`${name} must be an integer between ${min} and ${max}`)
   }

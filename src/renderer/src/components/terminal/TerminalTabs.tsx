@@ -12,7 +12,17 @@ interface TerminalTabsProps {
 }
 
 export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
-  const { sessions, tabOrder, activeTabId, setActiveTab, setTabOrder, closeTab, renameTab, closeOtherTabs, closeTabsToRight } = useTerminalStore()
+  const {
+    sessions,
+    tabOrder,
+    activeTabId,
+    setActiveTab,
+    setTabOrder,
+    closeTab,
+    renameTab,
+    closeOtherTabs,
+    closeTabsToRight
+  } = useTerminalStore()
   const [closingTabId, setClosingTabId] = useState<string | null>(null)
 
   const handleCloseTab = (sessionId: string) => {
@@ -64,7 +74,6 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
               sessionId={sessionId}
               session={session}
               isActive={sessionId === activeTabId}
-              tabCount={tabOrder.length}
               onActivate={() => setActiveTab(sessionId)}
               onClose={() => handleCloseTab(sessionId)}
               onRename={() => handleRename(sessionId)}
@@ -104,7 +113,6 @@ function Tab({
   sessionId,
   session,
   isActive,
-  tabCount,
   onActivate,
   onClose,
   onRename,
@@ -115,7 +123,6 @@ function Tab({
   sessionId: string
   session: TerminalSession
   isActive: boolean
-  tabCount: number
   onActivate: () => void
   onClose: () => void
   onRename: () => void
@@ -160,7 +167,7 @@ function Tab({
         destructive: true
       }
     ],
-    [onRename, onDuplicate, onCloseOthers, onCloseToRight, onClose, tabCount]
+    [onRename, onDuplicate, onCloseOthers, onCloseToRight, onClose]
   )
 
   return (

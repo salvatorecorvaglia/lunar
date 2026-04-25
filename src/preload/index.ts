@@ -14,7 +14,11 @@ import type {
   TransferCompleteEvent,
   TransferErrorEvent
 } from '@shared/types/transfer'
-import type { CreateConnectionInput, UpdateConnectionInput, ExportedConnection } from '@shared/types/connection'
+import type {
+  CreateConnectionInput,
+  UpdateConnectionInput,
+  ExportedConnection
+} from '@shared/types/connection'
 import type {
   SftpListParams,
   SftpStatParams,
@@ -59,8 +63,7 @@ const api = {
     export: () => ipcRenderer.invoke(IPC.CONNECTION_EXPORT) as Promise<ExportedConnection[]>,
     import: (connections: ExportedConnection[]) =>
       ipcRenderer.invoke(IPC.CONNECTION_IMPORT, connections) as Promise<number>,
-    importFromFile: () =>
-      ipcRenderer.invoke(IPC.CONNECTION_IMPORT_FROM_FILE) as Promise<number>
+    importFromFile: () => ipcRenderer.invoke(IPC.CONNECTION_IMPORT_FROM_FILE) as Promise<number>
   },
 
   // SSH sessions
@@ -78,7 +81,8 @@ const api = {
   // SFTP operations
   sftp: {
     list: (params: SftpListParams) => ipcRenderer.invoke(IPC.SFTP_LIST, params),
-    stat: (params: SftpStatParams) => ipcRenderer.invoke(IPC.SFTP_STAT, params) as Promise<SftpStatResult>,
+    stat: (params: SftpStatParams) =>
+      ipcRenderer.invoke(IPC.SFTP_STAT, params) as Promise<SftpStatResult>,
     mkdir: (params: SftpMkdirParams) => ipcRenderer.invoke(IPC.SFTP_MKDIR, params),
     rename: (params: SftpRenameParams) => ipcRenderer.invoke(IPC.SFTP_RENAME, params),
     delete: (params: SftpDeleteParams) => ipcRenderer.invoke(IPC.SFTP_DELETE, params),

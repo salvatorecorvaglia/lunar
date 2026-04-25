@@ -88,3 +88,6 @@ credentials.dat
 *.db
 *.db-wal
 *.db-shm
+
+# Coverage
+coverage

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -429,11 +430,7 @@ export function ConnectionForm() {
                 </div>
 
                 {/* Folder / Group */}
-                <FormField
-                  label="Group"
-                  icon={<FolderClosed className="h-3.5 w-3.5" />}
-                  optional
-                >
+                <FormField label="Group" icon={<FolderClosed className="h-3.5 w-3.5" />} optional>
                   <input
                     type="text"
                     value={folder === 'default' ? '' : folder}

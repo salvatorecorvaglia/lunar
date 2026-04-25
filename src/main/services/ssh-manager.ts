@@ -110,7 +110,10 @@ class SshManager {
         }
       } catch (err: unknown) {
         this.sessions.delete(sessionId)
-        return { success: false, error: `Failed to read key: ${err instanceof Error ? err.message : String(err)}` }
+        return {
+          success: false,
+          error: `Failed to read key: ${err instanceof Error ? err.message : String(err)}`
+        }
       }
     }
 
@@ -129,9 +132,10 @@ class SshManager {
         const historyId = uuidv4()
         session.historyId = historyId
         try {
-          db.prepare(
-            'INSERT INTO connection_history (id, connection_id) VALUES (?, ?)'
-          ).run(historyId, connectionId)
+          db.prepare('INSERT INTO connection_history (id, connection_id) VALUES (?, ?)').run(
+            historyId,
+            connectionId
+          )
         } catch {
           // History table may not exist on older DBs before migration runs
         }

@@ -1,6 +1,18 @@
 import { useMemo, memo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Server, Clock, Settings, ChevronRight, ChevronDown, Loader2, Pencil, Trash2, Terminal, FolderClosed } from 'lucide-react'
+import {
+  Plus,
+  Server,
+  Clock,
+  Settings,
+  ChevronRight,
+  ChevronDown,
+  Loader2,
+  Pencil,
+  Trash2,
+  Terminal,
+  FolderClosed
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useUIStore } from '@/stores/ui-store'
@@ -53,8 +65,6 @@ export function Sidebar() {
           className="flex h-full flex-col border-r border-border/60 bg-sidebar overflow-hidden no-select"
           style={{ willChange: 'width' }}
         >
-
-
           {/* Connections Header */}
           <div className="flex items-center justify-between px-3 py-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
@@ -152,7 +162,14 @@ function FolderGroup({
   connections
 }: {
   name: string
-  connections: { id: string; name: string; host: string; username: string; colorTag?: string; folder: string }[]
+  connections: {
+    id: string
+    name: string
+    host: string
+    username: string
+    colorTag?: string
+    folder: string
+  }[]
 }) {
   const [open, setOpen] = useState(true)
   const isDefault = name === 'default'
@@ -174,10 +191,7 @@ function FolderGroup({
         className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground/70 hover:text-muted-foreground hover:bg-sidebar-accent/40 cursor-pointer"
       >
         <ChevronDown
-          className={cn(
-            'h-3 w-3 transition-transform duration-150',
-            !open && '-rotate-90'
-          )}
+          className={cn('h-3 w-3 transition-transform duration-150', !open && '-rotate-90')}
         />
         <FolderClosed className="h-3 w-3" />
         <span className="truncate">{name}</span>
@@ -221,7 +235,9 @@ const ConnectionItem = memo(function ConnectionItem({
 
     // If already connected, switch to the existing tab instead of opening a new one
     const existingSession = Array.from(sessions.values()).find(
-      (s) => s.connectionId === connection.id && (s.status === 'connected' || s.status === 'connecting' || s.status === 'reconnecting')
+      (s) =>
+        s.connectionId === connection.id &&
+        (s.status === 'connected' || s.status === 'connecting' || s.status === 'reconnecting')
     )
     if (existingSession) {
       useTerminalStore.getState().setActiveTab(existingSession.id)
@@ -253,61 +269,61 @@ const ConnectionItem = memo(function ConnectionItem({
 
   return (
     <>
-    <ContextMenu items={contextMenuItems}>
-    <button
-      onClick={handleConnect}
-      className={cn(
-        'group flex w-full items-center gap-2.5 rounded-lg px-2.5 text-left',
-        compact ? 'py-[7px]' : 'py-2',
-        isActive
-          ? 'bg-sidebar-accent border-l-[3px] border-l-sidebar-primary pl-[7px]'
-          : 'hover:bg-sidebar-accent/60'
-      )}
-    >
-      {/* Status dot */}
-      <div className="relative flex-shrink-0">
-        <div
-          className="h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: connection.colorTag || '#22c55e' }}
-        />
-        {isConnected && (
-          <div className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-[1.5px] border-sidebar bg-emerald-500 animate-pulse-dot" />
-        )}
-        {isConnecting && (
-          <Loader2 className="absolute -right-1 -top-1 h-3 w-3 text-amber-500 animate-spin" />
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-medium text-sidebar-foreground">
-          {connection.name}
-        </div>
-        {!compact && (
-          <div className="truncate text-[11px] text-muted-foreground/70">
-            {connection.username}@{connection.host}
+      <ContextMenu items={contextMenuItems}>
+        <button
+          onClick={handleConnect}
+          className={cn(
+            'group flex w-full items-center gap-2.5 rounded-lg px-2.5 text-left',
+            compact ? 'py-[7px]' : 'py-2',
+            isActive
+              ? 'bg-sidebar-accent border-l-[3px] border-l-sidebar-primary pl-[7px]'
+              : 'hover:bg-sidebar-accent/60'
+          )}
+        >
+          {/* Status dot */}
+          <div className="relative flex-shrink-0">
+            <div
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: connection.colorTag || '#22c55e' }}
+            />
+            {isConnected && (
+              <div className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-[1.5px] border-sidebar bg-emerald-500 animate-pulse-dot" />
+            )}
+            {isConnecting && (
+              <Loader2 className="absolute -right-1 -top-1 h-3 w-3 text-amber-500 animate-spin" />
+            )}
           </div>
-        )}
-      </div>
 
-      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 flex-shrink-0 transition-colors" />
-    </button>
-    </ContextMenu>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-medium text-sidebar-foreground">
+              {connection.name}
+            </div>
+            {!compact && (
+              <div className="truncate text-[11px] text-muted-foreground/70">
+                {connection.username}@{connection.host}
+              </div>
+            )}
+          </div>
 
-    <ConfirmDialog
-      open={confirmDelete}
-      title="Delete connection?"
-      message={`"${connection.name}" will be permanently deleted. This cannot be undone.`}
-      confirmLabel="Delete"
-      destructive
-      onConfirm={() => {
-        deleteMutation.mutate(connection.id, {
-          onSuccess: () => toast.success('Connection deleted'),
-          onError: () => toast.error('Failed to delete connection')
-        })
-        setConfirmDelete(false)
-      }}
-      onCancel={() => setConfirmDelete(false)}
-    />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 flex-shrink-0 transition-colors" />
+        </button>
+      </ContextMenu>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete connection?"
+        message={`"${connection.name}" will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          deleteMutation.mutate(connection.id, {
+            onSuccess: () => toast.success('Connection deleted'),
+            onError: () => toast.error('Failed to delete connection')
+          })
+          setConfirmDelete(false)
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </>
   )
 })

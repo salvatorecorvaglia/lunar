@@ -29,8 +29,14 @@ function formatSpeed(bytesPerSec: number): string {
 }
 
 export function TransferQueue() {
-  const { transfers, queueExpanded, toggleQueueExpanded, clearCompleted, removeTransfer, addTransfer } =
-    useTransferStore()
+  const {
+    transfers,
+    queueExpanded,
+    toggleQueueExpanded,
+    clearCompleted,
+    removeTransfer,
+    addTransfer
+  } = useTransferStore()
 
   const retryTransfer = async (item: TransferItem) => {
     removeTransfer(item.id)
@@ -103,7 +109,12 @@ export function TransferQueue() {
           >
             <div className="max-h-[30vh] overflow-y-auto">
               {items.map((item) => (
-                <TransferRow key={item.id} item={item} onRemove={() => removeTransfer(item.id)} onRetry={() => retryTransfer(item)} />
+                <TransferRow
+                  key={item.id}
+                  item={item}
+                  onRemove={() => removeTransfer(item.id)}
+                  onRetry={() => retryTransfer(item)}
+                />
               ))}
             </div>
 
@@ -125,7 +136,15 @@ export function TransferQueue() {
   )
 }
 
-function TransferRow({ item, onRemove, onRetry }: { item: TransferItem; onRemove: () => void; onRetry: () => void }) {
+function TransferRow({
+  item,
+  onRemove,
+  onRetry
+}: {
+  item: TransferItem
+  onRemove: () => void
+  onRetry: () => void
+}) {
   const percent = item.size > 0 ? Math.round((item.transferred / item.size) * 100) : 0
   const isInProgress = item.status === 'active' || item.status === 'queued'
 

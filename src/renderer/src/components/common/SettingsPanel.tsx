@@ -1,6 +1,17 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState, useCallback } from 'react'
-import { X, Monitor, Terminal, Upload, Download, Wifi, Moon, Sun, Info, Database } from 'lucide-react'
+import {
+  X,
+  Monitor,
+  Terminal,
+  Upload,
+  Download,
+  Wifi,
+  Moon,
+  Sun,
+  Info,
+  Database
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
@@ -38,7 +49,8 @@ const panelVariants = {
 
 export function SettingsPanel() {
   const { settingsOpen, setSettingsOpen, theme, setTheme } = useUIStore()
-  const { terminalTheme, setTerminalTheme, fontSize, setFontSize, scrollback, setScrollback } = useTerminalStore()
+  const { terminalTheme, setTerminalTheme, fontSize, setFontSize, scrollback, setScrollback } =
+    useTerminalStore()
   const [concurrency, setConcurrency] = useState(DEFAULT_SETTINGS['transfer.concurrency'])
   const [autoReconnect, setAutoReconnect] = useState(DEFAULT_SETTINGS['ssh.autoReconnect'])
   const [readyTimeout, setReadyTimeout] = useState(DEFAULT_SETTINGS['ssh.readyTimeout'] / 1000)
@@ -259,7 +271,9 @@ export function SettingsPanel() {
                         })
                         if (saved) toast.success(`Exported ${connections.length} connections`)
                       } catch (err: unknown) {
-                        toast.error(`Export failed: ${err instanceof Error ? err.message : String(err)}`)
+                        toast.error(
+                          `Export failed: ${err instanceof Error ? err.message : String(err)}`
+                        )
                       }
                     }}
                     className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
@@ -278,7 +292,9 @@ export function SettingsPanel() {
                           toast.info('No new connections to import (all duplicates)')
                         }
                       } catch (err: unknown) {
-                        toast.error(`Import failed: ${err instanceof Error ? err.message : String(err)}`)
+                        toast.error(
+                          `Import failed: ${err instanceof Error ? err.message : String(err)}`
+                        )
                       }
                     }}
                     className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"

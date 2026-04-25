@@ -33,9 +33,11 @@ export function verifyHostKey(
 
   if (!row) {
     // First connection — trust on first use
-    db.prepare(
-      'INSERT INTO known_hosts (host_key, algorithm, fingerprint) VALUES (?, ?, ?)'
-    ).run(hostKey, algorithm, fp)
+    db.prepare('INSERT INTO known_hosts (host_key, algorithm, fingerprint) VALUES (?, ?, ?)').run(
+      hostKey,
+      algorithm,
+      fp
+    )
     return { trusted: true, changed: false }
   }
 

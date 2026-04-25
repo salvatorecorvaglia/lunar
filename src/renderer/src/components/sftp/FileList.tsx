@@ -224,7 +224,11 @@ export function FileList({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden outline-none" tabIndex={0} onKeyDown={handleListKeyDown}>
+    <div
+      className="flex h-full flex-col overflow-hidden outline-none"
+      tabIndex={0}
+      onKeyDown={handleListKeyDown}
+    >
       {/* Header */}
       <div className="flex items-center border-b border-border/60 bg-muted/20 text-[11px] font-medium text-muted-foreground/80 no-select">
         <button
@@ -239,11 +243,7 @@ export function FileList({
         >
           Size <SortIcon field="size" />
         </button>
-        {showPermissions && (
-          <div className="w-[84px] px-2 py-1.5 text-right">
-            Perms
-          </div>
-        )}
+        {showPermissions && <div className="w-[84px] px-2 py-1.5 text-right">Perms</div>}
         <button
           onClick={() => handleSort('modifiedAt')}
           className="flex w-36 items-center justify-end gap-1 px-3 py-1.5 hover:text-foreground cursor-pointer"
@@ -265,16 +265,42 @@ export function FileList({
             const entry = sorted[virtualRow.index]
             const contextItems: ContextMenuItem[] = [
               ...(!entry.isDirectory && onPreview
-                ? [{ label: 'Preview', icon: <Eye className="h-3.5 w-3.5" />, onClick: () => onPreview(entry) }]
+                ? [
+                    {
+                      label: 'Preview',
+                      icon: <Eye className="h-3.5 w-3.5" />,
+                      onClick: () => onPreview(entry)
+                    }
+                  ]
                 : []),
               ...(onCopyPath
-                ? [{ label: 'Copy Path', icon: <Copy className="h-3.5 w-3.5" />, onClick: () => onCopyPath(entry) }]
+                ? [
+                    {
+                      label: 'Copy Path',
+                      icon: <Copy className="h-3.5 w-3.5" />,
+                      onClick: () => onCopyPath(entry)
+                    }
+                  ]
                 : []),
               ...(onRename
-                ? [{ label: 'Rename', icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => onRename(entry), separator: true }]
+                ? [
+                    {
+                      label: 'Rename',
+                      icon: <Pencil className="h-3.5 w-3.5" />,
+                      onClick: () => onRename(entry),
+                      separator: true
+                    }
+                  ]
                 : []),
               ...(onDelete
-                ? [{ label: 'Delete', icon: <Trash2 className="h-3.5 w-3.5" />, onClick: () => onDelete(entry), destructive: true }]
+                ? [
+                    {
+                      label: 'Delete',
+                      icon: <Trash2 className="h-3.5 w-3.5" />,
+                      onClick: () => onDelete(entry),
+                      destructive: true
+                    }
+                  ]
                 : [])
             ]
             const row = (
@@ -332,8 +358,12 @@ export function FileList({
               </div>
             )
             return contextItems.length > 0 ? (
-              <ContextMenu key={entry.name} items={contextItems}>{row}</ContextMenu>
-            ) : row
+              <ContextMenu key={entry.name} items={contextItems}>
+                {row}
+              </ContextMenu>
+            ) : (
+              row
+            )
           })}
         </div>
       </div>

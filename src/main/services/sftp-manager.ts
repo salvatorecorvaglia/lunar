@@ -128,7 +128,9 @@ class SftpManager {
       (resolve, reject) => {
         sftp.readdir(dirPath, (err, list) => {
           if (err) return reject(err)
-          resolve(list.map((item) => ({ filename: item.filename, attrs: { mode: item.attrs.mode } })))
+          resolve(
+            list.map((item) => ({ filename: item.filename, attrs: { mode: item.attrs.mode } }))
+          )
         })
       }
     )
@@ -191,7 +193,10 @@ class SftpManager {
     })
   }
 
-  async stat(sessionId: string, remotePath: string): Promise<{
+  async stat(
+    sessionId: string,
+    remotePath: string
+  ): Promise<{
     size: number
     mode: number
     modifiedAt: number

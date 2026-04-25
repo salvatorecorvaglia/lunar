@@ -239,10 +239,18 @@ export function registerDbHandlers(): void {
       const id = uuidv4()
       const now = Math.floor(Date.now() / 1000)
       insert.run(
-        id, conn.name, conn.host, conn.port || 22, conn.username,
-        conn.authType || 'password', conn.privateKeyPath || null,
-        conn.folder || 'default', conn.colorTag || null,
-        conn.startupCommand || null, now, now
+        id,
+        conn.name,
+        conn.host,
+        conn.port || 22,
+        conn.username,
+        conn.authType || 'password',
+        conn.privateKeyPath || null,
+        conn.folder || 'default',
+        conn.colorTag || null,
+        conn.startupCommand || null,
+        now,
+        now
       )
       imported++
     }

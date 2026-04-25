@@ -37,8 +37,13 @@ class TransferQueue {
   ): Promise<string> {
     // Prevent duplicate transfers
     const isDuplicate = (t: QueuedTransfer) =>
-      t.type === type && t.sessionId === sessionId && t.localPath === localPath && t.remotePath === remotePath && !t.cancelled
-    const existing = this.queue.find(isDuplicate) || Array.from(this.active.values()).find(isDuplicate)
+      t.type === type &&
+      t.sessionId === sessionId &&
+      t.localPath === localPath &&
+      t.remotePath === remotePath &&
+      !t.cancelled
+    const existing =
+      this.queue.find(isDuplicate) || Array.from(this.active.values()).find(isDuplicate)
     if (existing) return existing.id
 
     const transferId = uuidv4()
