@@ -1,4 +1,4 @@
-import { useMemo, memo, useState } from 'react'
+import { useMemo, memo, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus,
@@ -11,7 +11,10 @@ import {
   Pencil,
   Trash2,
   Terminal,
-  FolderClosed
+  FolderClosed,
+  Search,
+  Copy,
+  X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -24,34 +27,73 @@ import { ContextMenu, type ContextMenuItem } from '@/components/common/ContextMe
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 export function Sidebar() {
-  const { sidebarOpen, sidebarWidth, setSettingsOpen } = useUIStore()
+  const { sidebarOpen, sidebarWidth, setSidebarWidth, setSettingsOpen } = useUIStore()
   const { openCreateForm } = useConnectionStore()
   const { data: connections, isLoading } = useConnections()
   const connectionList = useMemo(() => connections ?? [], [connections])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredConnections = useMemo(() => {
+    if (!searchQuery.trim()) return connectionList
+    const q = searchQuery.toLowerCase()
+    return connectionList.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.host.toLowerCase().includes(q) ||
+        c.username.toLowerCase().includes(q)
+    )
+  }, [connectionList, searchQuery])
 
   const recentConnections = useMemo(
     () =>
-      [...connectionList]
-        .filter((c) => c.lastConnectedAt)
-        .sort((a, b) => (b.lastConnectedAt || 0) - (a.lastConnectedAt || 0))
-        .slice(0, 5),
-    [connectionList]
+      searchQuery
+        ? []
+        : [...connectionList]
+            .filter((c) => c.lastConnectedAt)
+            .sort((a, b) => (b.lastConnectedAt || 0) - (a.lastConnectedAt || 0))
+            .slice(0, 5),
+    [connectionList, searchQuery]
   )
 
   const groupedConnections = useMemo(() => {
-    const groups = new Map<string, typeof connectionList>()
-    for (const conn of connectionList) {
+    const groups = new Map<string, typeof filteredConnections>()
+    for (const conn of filteredConnections) {
       const folder = conn.folder || 'default'
       const list = groups.get(folder) ?? []
       list.push(conn)
       groups.set(folder, list)
     }
     return groups
-  }, [connectionList])
+  }, [filteredConnections])
 
   const hasNonDefaultFolders = useMemo(
     () => Array.from(groupedConnections.keys()).some((k) => k !== 'default'),
     [groupedConnections]
+  )
+
+  const [resizing, setResizing] = useState(false)
+
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      setResizing(true)
+      const onMouseMove = (e: MouseEvent) => {
+        const width = Math.max(200, Math.min(400, e.clientX))
+        setSidebarWidth(width)
+      }
+      const onMouseUp = () => {
+        setResizing(false)
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onMouseUp)
+    },
+    [setSidebarWidth]
   )
 
   return (
@@ -62,7 +104,7 @@ export function Sidebar() {
           animate={{ width: sidebarWidth, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
           transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-          className="flex h-full flex-col border-r border-border/60 bg-sidebar overflow-hidden no-select"
+          className="relative flex h-full flex-col border-r border-border/60 bg-sidebar overflow-hidden no-select"
           style={{ willChange: 'width' }}
         >
           {/* Connections Header */}
@@ -80,6 +122,31 @@ export function Sidebar() {
             </button>
           </div>
 
+          {/* Search */}
+          {connectionList.length > 5 && (
+            <div className="px-2 pb-1.5">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/50" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter connections..."
+                  className="form-input !py-1 !pl-7 !pr-7 !text-xs"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground/50 hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Connection List */}
           <div className="flex-1 overflow-y-auto px-1.5 pb-2">
             {isLoading ? (
@@ -94,23 +161,25 @@ export function Sidebar() {
                   </div>
                 ))}
               </div>
-            ) : connectionList.length === 0 ? (
+            ) : filteredConnections.length === 0 ? (
               <div className="px-3 py-10 text-center">
                 <Server className="mx-auto h-8 w-8 text-muted-foreground/30" />
                 <p className="mt-3 text-xs font-medium text-muted-foreground/70">
-                  No connections yet
+                  {searchQuery ? 'No matching connections' : 'No connections yet'}
                 </p>
-                <button
-                  onClick={() => openCreateForm()}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sidebar-primary hover:underline"
-                >
-                  <Plus className="h-3 w-3" />
-                  Add your first connection
-                </button>
+                {!searchQuery && (
+                  <button
+                    onClick={() => openCreateForm()}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sidebar-primary hover:underline"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add your first connection
+                  </button>
+                )}
               </div>
             ) : !hasNonDefaultFolders ? (
               <div className="space-y-0.5">
-                {connectionList.map((conn) => (
+                {filteredConnections.map((conn) => (
                   <ConnectionItem key={conn.id} connection={conn} />
                 ))}
               </div>
@@ -150,6 +219,21 @@ export function Sidebar() {
               <Settings className="h-3.5 w-3.5" />
               Settings
             </button>
+          </div>
+
+          {/* Resize handle */}
+          <div className="absolute right-0 top-0 bottom-0 w-px cursor-col-resize">
+            <div
+              className={cn(
+                'absolute inset-0 bg-border',
+                resizing ? 'bg-primary/60' : 'hover:bg-primary/40'
+              )}
+              style={{ transition: 'background-color 150ms' }}
+            />
+            <div
+              onMouseDown={handleResizeMouseDown}
+              className="absolute -left-1 -right-1 inset-y-0 cursor-col-resize"
+            />
           </div>
         </motion.aside>
       )}
@@ -215,7 +299,8 @@ const ConnectionItem = memo(function ConnectionItem({
   connection: { id: string; name: string; host: string; username: string; colorTag?: string }
   compact?: boolean
 }) {
-  const { activeConnectionId, setActiveConnectionId, openEditForm } = useConnectionStore()
+  const { activeConnectionId, setActiveConnectionId, openEditForm, openDuplicateForm } =
+    useConnectionStore()
   const { setActiveView } = useUIStore()
   const { sessions } = useTerminalStore()
   const deleteMutation = useDeleteConnection()
@@ -257,6 +342,11 @@ const ConnectionItem = memo(function ConnectionItem({
       label: 'Edit',
       icon: <Pencil className="h-3.5 w-3.5" />,
       onClick: () => openEditForm(connection.id)
+    },
+    {
+      label: 'Duplicate',
+      icon: <Copy className="h-3.5 w-3.5" />,
+      onClick: () => openDuplicateForm(connection.id)
     },
     {
       label: 'Delete',

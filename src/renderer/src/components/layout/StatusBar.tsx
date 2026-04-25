@@ -58,7 +58,7 @@ export function StatusBar() {
 
       {/* Right */}
       <div className="flex items-center gap-3">
-        {activeTransfers.length > 0 && (
+        {activeTransfers.length > 0 ? (
           <button
             onClick={toggleQueueExpanded}
             className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-accent hover:text-foreground cursor-pointer"
@@ -68,6 +68,12 @@ export function StatusBar() {
               {activeTransfers.length} transfer{activeTransfers.length !== 1 ? 's' : ''}
             </span>
           </button>
+        ) : (
+          activeSessions > 0 && (
+            <span className="text-muted-foreground/50">
+              {activeSessions} session{activeSessions !== 1 ? 's' : ''}
+            </span>
+          )
         )}
       </div>
     </div>

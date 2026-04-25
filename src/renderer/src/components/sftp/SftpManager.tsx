@@ -14,6 +14,8 @@ import {
 import { FilePane, type FileEntry } from './FilePane'
 import { TransferQueue } from './TransferQueue'
 import { FilePreview } from './FilePreview'
+import { PromptDialog } from '@/components/common/PromptDialog'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 export function SftpManager() {
   const {
@@ -160,6 +162,11 @@ export function SftpManager() {
     e.dataTransfer.setData('file-size', String(entry.size || 0))
   }, [])
 
+  // Dialog state for rename, delete, mkdir
+  const [renameTarget, setRenameTarget] = useState<FileEntry | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<FileEntry | null>(null)
+  const [mkdirOpen, setMkdirOpen] = useState(false)
+
   const { setPreviewFile } = useSftpStore()
 
   // Preview remote file on double-click
@@ -185,18 +192,22 @@ export function SftpManager() {
   )
 
   // Rename remote file/directory
-  const handleRemoteRename = useCallback(
-    async (entry: FileEntry) => {
-      if (!sftpSessionId) return
-      const newName = window.prompt('Rename to:', entry.name)
-      if (!newName || newName === entry.name) return
+  const handleRemoteRename = useCallback((entry: FileEntry) => {
+    setRenameTarget(entry)
+  }, [])
 
-      const parentPath = entry.path.substring(0, entry.path.lastIndexOf('/')) || '/'
+  const handleRenameConfirm = useCallback(
+    async (newName: string) => {
+      if (!sftpSessionId || !renameTarget) return
+      setRenameTarget(null)
+      if (newName === renameTarget.name) return
+
+      const parentPath = renameTarget.path.substring(0, renameTarget.path.lastIndexOf('/')) || '/'
       const newPath = parentPath === '/' ? `/${newName}` : `${parentPath}/${newName}`
       try {
         await window.api.sftp.rename({
           sessionId: sftpSessionId,
-          oldPath: entry.path,
+          oldPath: renameTarget.path,
           newPath
         })
         toast.success(`Renamed to ${newName}`)
@@ -205,32 +216,31 @@ export function SftpManager() {
         toast.error(`Rename failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     },
-    [sftpSessionId, remotePath, invalidateSftp]
+    [sftpSessionId, remotePath, invalidateSftp, renameTarget]
   )
 
   // Delete remote file/directory
-  const handleRemoteDelete = useCallback(
-    async (entry: FileEntry) => {
-      if (!sftpSessionId) return
-      const confirmed = window.confirm(
-        `Delete "${entry.name}"${entry.isDirectory ? ' and all its contents' : ''}?`
-      )
-      if (!confirmed) return
+  const handleRemoteDelete = useCallback((entry: FileEntry) => {
+    setDeleteTarget(entry)
+  }, [])
 
-      try {
-        await window.api.sftp.delete({
-          sessionId: sftpSessionId,
-          path: entry.path,
-          isDirectory: entry.isDirectory
-        })
-        toast.success(`Deleted ${entry.name}`)
-        invalidateSftp(sftpSessionId, remotePath)
-      } catch (err: unknown) {
-        toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`)
-      }
-    },
-    [sftpSessionId, remotePath, invalidateSftp]
-  )
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!sftpSessionId || !deleteTarget) return
+    const entry = deleteTarget
+    setDeleteTarget(null)
+
+    try {
+      await window.api.sftp.delete({
+        sessionId: sftpSessionId,
+        path: entry.path,
+        isDirectory: entry.isDirectory
+      })
+      toast.success(`Deleted ${entry.name}`)
+      invalidateSftp(sftpSessionId, remotePath)
+    } catch (err: unknown) {
+      toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }, [sftpSessionId, remotePath, invalidateSftp, deleteTarget])
 
   // Copy remote path to clipboard
   const handleRemoteCopyPath = useCallback((entry: FileEntry) => {
@@ -239,20 +249,26 @@ export function SftpManager() {
   }, [])
 
   // Create directory on remote
-  const handleRemoteMkdir = useCallback(async () => {
-    if (!sftpSessionId) return
-    const name = window.prompt('New folder name:')
-    if (!name) return
+  const handleRemoteMkdir = useCallback(() => {
+    setMkdirOpen(true)
+  }, [])
 
-    const newPath = remotePath === '/' ? `/${name}` : `${remotePath}/${name}`
-    try {
-      await window.api.sftp.mkdir({ sessionId: sftpSessionId, path: newPath })
-      toast.success(`Created folder "${name}"`)
-      invalidateSftp(sftpSessionId, remotePath)
-    } catch (err: unknown) {
-      toast.error(`Failed to create folder: ${err instanceof Error ? err.message : String(err)}`)
-    }
-  }, [sftpSessionId, remotePath, invalidateSftp])
+  const handleMkdirConfirm = useCallback(
+    async (name: string) => {
+      if (!sftpSessionId) return
+      setMkdirOpen(false)
+
+      const newPath = remotePath === '/' ? `/${name}` : `${remotePath}/${name}`
+      try {
+        await window.api.sftp.mkdir({ sessionId: sftpSessionId, path: newPath })
+        toast.success(`Created folder "${name}"`)
+        invalidateSftp(sftpSessionId, remotePath)
+      } catch (err: unknown) {
+        toast.error(`Failed to create folder: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    },
+    [sftpSessionId, remotePath, invalidateSftp]
+  )
 
   // Resize handle
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
@@ -291,7 +307,7 @@ export function SftpManager() {
         </div>
         <button
           onClick={() => useConnectionStore.getState().openCreateForm()}
-          className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+          className="btn-outline mt-1"
         >
           <Plus className="h-3.5 w-3.5" />
           New Connection
@@ -370,6 +386,39 @@ export function SftpManager() {
 
       {/* File preview modal */}
       <FilePreview />
+
+      {/* Rename dialog */}
+      <PromptDialog
+        open={!!renameTarget}
+        title="Rename"
+        message={`Rename "${renameTarget?.name ?? ''}"`}
+        placeholder="New name"
+        defaultValue={renameTarget?.name ?? ''}
+        confirmLabel="Rename"
+        onConfirm={handleRenameConfirm}
+        onCancel={() => setRenameTarget(null)}
+      />
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete file?"
+        message={`"${deleteTarget?.name ?? ''}" will be permanently deleted${deleteTarget?.isDirectory ? ' along with all its contents' : ''}. This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* New folder dialog */}
+      <PromptDialog
+        open={mkdirOpen}
+        title="New folder"
+        placeholder="Folder name"
+        confirmLabel="Create"
+        onConfirm={handleMkdirConfirm}
+        onCancel={() => setMkdirOpen(false)}
+      />
     </div>
   )
 }

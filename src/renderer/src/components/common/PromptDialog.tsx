@@ -1,15 +1,15 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle } from 'lucide-react'
 
-interface ConfirmDialogProps {
+interface PromptDialogProps {
   open: boolean
   title: string
-  message: string
+  message?: string
+  placeholder?: string
+  defaultValue?: string
   confirmLabel?: string
   cancelLabel?: string
-  destructive?: boolean
-  onConfirm: () => void
+  onConfirm: (value: string) => void
   onCancel: () => void
 }
 
@@ -30,29 +30,38 @@ const dialogVariants = {
   exit: { opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.1 } }
 }
 
-export function ConfirmDialog({
+export function PromptDialog({
   open,
   title,
   message,
+  placeholder,
+  defaultValue = '',
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
-  destructive = false,
   onConfirm,
   onCancel
-}: ConfirmDialogProps) {
+}: PromptDialogProps) {
+  const [value, setValue] = useState(defaultValue)
+  const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Focus trap + Escape
+  // Reset value when dialog opens
+  useEffect(() => {
+    if (open) {
+      setValue(defaultValue)
+      // Focus input after animation
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      })
+    }
+  }, [open, defaultValue])
+
+  // Focus trap
   useEffect(() => {
     if (!open) return
     const dialog = dialogRef.current
     if (!dialog) return
-
-    // Auto-focus cancel button
-    requestAnimationFrame(() => {
-      const cancelBtn = dialog.querySelector<HTMLElement>('[data-cancel]')
-      cancelBtn?.focus()
-    })
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -61,7 +70,7 @@ export function ConfirmDialog({
       }
       if (e.key === 'Tab') {
         const focusable = dialog.querySelectorAll<HTMLElement>(
-          'button, [tabindex]:not([tabindex="-1"])'
+          'input, button, [tabindex]:not([tabindex="-1"])'
         )
         const first = focusable[0]
         const last = focusable[focusable.length - 1]
@@ -79,6 +88,13 @@ export function ConfirmDialog({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, onCancel])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (value.trim()) {
+      onConfirm(value.trim())
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -104,32 +120,36 @@ export function ConfirmDialog({
               className="w-full max-w-sm rounded-xl border border-border/80 bg-card p-5 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start gap-3">
-                {destructive && (
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-destructive/10">
-                    <AlertTriangle className="h-4.5 w-4.5 text-destructive" />
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{message}</p>
+              <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+              {message && (
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{message}</p>
+              )}
+              <form onSubmit={handleSubmit}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder={placeholder}
+                  className="form-input mt-3"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="btn-ghost"
+                  >
+                    {cancelLabel}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!value.trim()}
+                    className="btn-primary"
+                  >
+                    {confirmLabel}
+                  </button>
                 </div>
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  data-cancel
-                  onClick={onCancel}
-                  className="btn-ghost"
-                >
-                  {cancelLabel}
-                </button>
-                <button
-                  onClick={onConfirm}
-                  className={destructive ? 'btn-destructive' : 'btn-primary'}
-                >
-                  {confirmLabel}
-                </button>
-              </div>
+              </form>
             </div>
           </motion.div>
         </>

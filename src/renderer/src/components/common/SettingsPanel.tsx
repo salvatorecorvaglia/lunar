@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   X,
   Monitor,
@@ -77,11 +77,34 @@ export function SettingsPanel() {
     window.api.settings.set(key, JSON.stringify(value))
   }, [])
 
-  // Close on Escape
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Focus trap + Escape
   useEffect(() => {
     if (!settingsOpen) return
+    const panel = panelRef.current
+    if (!panel) return
+
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSettingsOpen(false)
+      if (e.key === 'Escape') {
+        setSettingsOpen(false)
+        return
+      }
+      if (e.key === 'Tab') {
+        const focusable = panel.querySelectorAll<HTMLElement>(
+          'input:not([disabled]), button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last?.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first?.focus()
+        }
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -104,6 +127,7 @@ export function SettingsPanel() {
             initial="initial"
             animate="animate"
             exit="exit"
+            ref={panelRef}
             className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border/60 bg-card shadow-xl"
           >
             {/* Header */}
@@ -169,7 +193,7 @@ export function SettingsPanel() {
                           'group flex flex-col items-center gap-2 rounded-lg border p-3 cursor-pointer',
                           terminalTheme === t.value
                             ? 'border-ring bg-accent shadow-xs'
-                            : 'border-border hover:border-border hover:bg-accent/40'
+                            : 'border-border hover:border-ring/50 hover:bg-accent/40'
                         )}
                       >
                         {/* Mini terminal preview */}
@@ -276,7 +300,7 @@ export function SettingsPanel() {
                         )
                       }
                     }}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                    className="btn-outline flex-1"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Export
@@ -297,7 +321,7 @@ export function SettingsPanel() {
                         )
                       }
                     }}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                    className="btn-outline flex-1"
                   >
                     <Upload className="h-3.5 w-3.5" />
                     Import
@@ -369,7 +393,7 @@ function ThemeCard({
         'flex flex-col items-center gap-2.5 rounded-lg border p-3 cursor-pointer',
         active
           ? 'border-ring bg-accent shadow-xs'
-          : 'border-border text-muted-foreground hover:border-border hover:bg-accent/40'
+          : 'border-border text-muted-foreground hover:border-ring/50 hover:bg-accent/40'
       )}
     >
       {preview}
@@ -384,11 +408,13 @@ function ThemeCard({
 function SettingRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium text-foreground">{value}</span>
+      <span className="text-xs text-muted-foreground/70">{label}</span>
+      <span className="text-xs text-muted-foreground/70">{value}</span>
     </div>
   )
 }
+
+let toggleCounter = 0
 
 function ToggleRow({
   label,
@@ -399,13 +425,18 @@ function ToggleRow({
   enabled: boolean
   onToggle?: (value: boolean) => void
 }) {
+  const [labelId] = useState(() => `toggle-label-${++toggleCounter}`)
+
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span id={labelId} className="text-xs text-muted-foreground">
+        {label}
+      </span>
       <button
         type="button"
         role="switch"
         aria-checked={enabled}
+        aria-labelledby={labelId}
         onClick={() => onToggle?.(!enabled)}
         className={cn(
           'flex h-5 w-9 items-center rounded-full px-0.5 cursor-pointer transition-colors',

@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X,
@@ -34,15 +34,15 @@ const AUTH_TYPES: { value: AuthType; label: string; icon: React.ReactNode }[] = 
   }
 ]
 
-const COLOR_OPTIONS = [
-  '#22c55e',
-  '#3b82f6',
-  '#a855f7',
-  '#f43f5e',
-  '#f97316',
-  '#eab308',
-  '#06b6d4',
-  '#ec4899'
+const COLOR_OPTIONS: { hex: string; name: string }[] = [
+  { hex: '#22c55e', name: 'Green' },
+  { hex: '#3b82f6', name: 'Blue' },
+  { hex: '#a855f7', name: 'Purple' },
+  { hex: '#f43f5e', name: 'Rose' },
+  { hex: '#f97316', name: 'Orange' },
+  { hex: '#eab308', name: 'Yellow' },
+  { hex: '#06b6d4', name: 'Cyan' },
+  { hex: '#ec4899', name: 'Pink' }
 ]
 
 const overlayVariants = {
@@ -63,8 +63,10 @@ const dialogVariants = {
 }
 
 export function ConnectionForm() {
-  const { connectionFormOpen, editingConnectionId, closeForm } = useConnectionStore()
+  const { connectionFormOpen, editingConnectionId, duplicatingConnectionId, closeForm } =
+    useConnectionStore()
   const { data: editingConnection } = useConnection(editingConnectionId)
+  const { data: duplicatingConnection } = useConnection(duplicatingConnectionId)
   const createMutation = useCreateConnection()
   const updateMutation = useUpdateConnection()
 
@@ -77,19 +79,42 @@ export function ConnectionForm() {
   const [privateKeyPath, setPrivateKeyPath] = useState('')
   const [passphrase, setPassphrase] = useState('')
   const [folder, setFolder] = useState('default')
-  const [colorTag, setColorTag] = useState<string>('#22c55e')
+  const [colorTag, setColorTag] = useState<string>(COLOR_OPTIONS[0].hex)
   const [startupCommand, setStartupCommand] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const fieldId = useId()
   const isEditing = !!editingConnectionId
   const isSaving = createMutation.isPending || updateMutation.isPending
 
-  // Close on Escape
+  // Focus trap + Escape
   useEffect(() => {
     if (!connectionFormOpen) return
+    const dialog = dialogRef.current
+    if (!dialog) return
+
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeForm()
+      if (e.key === 'Escape') {
+        closeForm()
+        return
+      }
+      if (e.key === 'Tab') {
+        const focusable = dialog.querySelectorAll<HTMLElement>(
+          'input:not([disabled]), button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last?.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first?.focus()
+        }
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -105,30 +130,31 @@ export function ConnectionForm() {
     setPrivateKeyPath('')
     setPassphrase('')
     setFolder('default')
-    setColorTag('#22c55e')
+    setColorTag(COLOR_OPTIONS[0].hex)
     setStartupCommand('')
     setShowPassword(false)
     setTouched({})
   }, [])
 
   useEffect(() => {
-    if (editingConnection) {
-      setName(editingConnection.name)
-      setHost(editingConnection.host)
-      setPort(String(editingConnection.port))
-      setUsername(editingConnection.username)
-      setAuthType(editingConnection.authType)
-      setPrivateKeyPath(editingConnection.privateKeyPath || '')
-      setFolder(editingConnection.folder)
-      setColorTag(editingConnection.colorTag || '#22c55e')
-      setStartupCommand(editingConnection.startupCommand || '')
+    const source = editingConnection || duplicatingConnection
+    if (source) {
+      setName(duplicatingConnection ? `${source.name} (copy)` : source.name)
+      setHost(source.host)
+      setPort(String(source.port))
+      setUsername(source.username)
+      setAuthType(source.authType)
+      setPrivateKeyPath(source.privateKeyPath || '')
+      setFolder(source.folder)
+      setColorTag(source.colorTag || COLOR_OPTIONS[0].hex)
+      setStartupCommand(source.startupCommand || '')
       setPassword('')
       setPassphrase('')
     } else {
       resetForm()
     }
     setTouched({})
-  }, [editingConnection, connectionFormOpen, resetForm])
+  }, [editingConnection, duplicatingConnection, connectionFormOpen, resetForm])
 
   const markTouched = useCallback((field: string) => {
     setTouched((prev) => ({ ...prev, [field]: true }))
@@ -208,6 +234,7 @@ export function ConnectionForm() {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div
+              ref={dialogRef}
               className="w-full max-w-lg rounded-xl border border-border/80 bg-card shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
@@ -218,7 +245,7 @@ export function ConnectionForm() {
                     <Server className="h-4 w-4 text-primary" />
                   </div>
                   <h2 className="text-base font-semibold text-foreground">
-                    {isEditing ? 'Edit Connection' : 'New Connection'}
+                    {isEditing ? 'Edit Connection' : duplicatingConnection ? 'Duplicate Connection' : 'New Connection'}
                   </h2>
                 </div>
                 <button onClick={closeForm} className="btn-icon" aria-label="Close">
@@ -233,8 +260,10 @@ export function ConnectionForm() {
                   label="Connection Name"
                   icon={<Server className="h-3.5 w-3.5" />}
                   required
+                  id={`${fieldId}-name`}
                 >
                   <input
+                    id={`${fieldId}-name`}
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -251,8 +280,9 @@ export function ConnectionForm() {
                 {/* Host + Port */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
-                    <FormField label="Host" icon={<Globe className="h-3.5 w-3.5" />} required>
+                    <FormField label="Host" icon={<Globe className="h-3.5 w-3.5" />} required id={`${fieldId}-host`}>
                       <input
+                        id={`${fieldId}-host`}
                         type="text"
                         value={host}
                         onChange={(e) => setHost(e.target.value)}
@@ -266,8 +296,9 @@ export function ConnectionForm() {
                       />
                     </FormField>
                   </div>
-                  <FormField label="Port" icon={<Hash className="h-3.5 w-3.5" />}>
+                  <FormField label="Port" icon={<Hash className="h-3.5 w-3.5" />} id={`${fieldId}-port`}>
                     <input
+                      id={`${fieldId}-port`}
                       type="number"
                       value={port}
                       onChange={(e) => setPort(e.target.value)}
@@ -278,8 +309,9 @@ export function ConnectionForm() {
                 </div>
 
                 {/* Username */}
-                <FormField label="Username" icon={<User className="h-3.5 w-3.5" />} required>
+                <FormField label="Username" icon={<User className="h-3.5 w-3.5" />} required id={`${fieldId}-user`}>
                   <input
+                    id={`${fieldId}-user`}
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -299,17 +331,19 @@ export function ConnectionForm() {
                     <Key className="h-3.5 w-3.5" />
                     Authentication
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Authentication type">
                     {AUTH_TYPES.map((type) => (
                       <button
                         key={type.value}
                         type="button"
+                        role="radio"
+                        aria-checked={authType === type.value}
                         onClick={() => setAuthType(type.value)}
                         className={cn(
                           'flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium cursor-pointer',
                           authType === type.value
                             ? 'border-ring bg-accent text-foreground shadow-xs'
-                            : 'border-border text-muted-foreground hover:border-border hover:bg-accent/50'
+                            : 'border-border text-muted-foreground hover:border-ring/50 hover:bg-accent/50'
                         )}
                       >
                         {type.icon}
@@ -329,9 +363,10 @@ export function ConnectionForm() {
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.15 }}
                     >
-                      <FormField label="Password" icon={<Lock className="h-3.5 w-3.5" />}>
+                      <FormField label="Password" icon={<Lock className="h-3.5 w-3.5" />} id={`${fieldId}-pass`}>
                         <div className="relative">
                           <input
+                            id={`${fieldId}-pass`}
                             type={showPassword ? 'text' : 'password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -367,9 +402,11 @@ export function ConnectionForm() {
                       <FormField
                         label="Private Key Path"
                         icon={<FileKey className="h-3.5 w-3.5" />}
+                        id={`${fieldId}-key`}
                       >
                         <div className="flex gap-2">
                           <input
+                            id={`${fieldId}-key`}
                             type="text"
                             value={privateKeyPath}
                             onChange={(e) => setPrivateKeyPath(e.target.value)}
@@ -379,7 +416,7 @@ export function ConnectionForm() {
                           <button
                             type="button"
                             onClick={handleBrowseKey}
-                            className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                            className="btn-outline shrink-0"
                           >
                             Browse
                           </button>
@@ -387,8 +424,9 @@ export function ConnectionForm() {
                       </FormField>
 
                       {authType === 'key+passphrase' && (
-                        <FormField label="Passphrase" icon={<Lock className="h-3.5 w-3.5" />}>
+                        <FormField label="Passphrase" icon={<Lock className="h-3.5 w-3.5" />} id={`${fieldId}-phrase`}>
                           <input
+                            id={`${fieldId}-phrase`}
                             type="password"
                             value={passphrase}
                             onChange={(e) => setPassphrase(e.target.value)}
@@ -407,21 +445,24 @@ export function ConnectionForm() {
                     <Palette className="h-3.5 w-3.5" />
                     Color Tag
                   </label>
-                  <div className="flex gap-2.5">
+                  <div className="flex gap-2.5" role="radiogroup" aria-label="Color tag">
                     {COLOR_OPTIONS.map((color) => (
                       <button
-                        key={color}
+                        key={color.hex}
                         type="button"
-                        onClick={() => setColorTag(color)}
+                        role="radio"
+                        aria-checked={colorTag === color.hex}
+                        aria-label={color.name}
+                        onClick={() => setColorTag(color.hex)}
                         className={cn(
                           'relative h-7 w-7 rounded-full cursor-pointer',
-                          colorTag === color
+                          colorTag === color.hex
                             ? 'ring-2 ring-ring ring-offset-2 ring-offset-card'
                             : 'hover:scale-110'
                         )}
-                        style={{ backgroundColor: color }}
+                        style={{ backgroundColor: color.hex }}
                       >
-                        {colorTag === color && (
+                        {colorTag === color.hex && (
                           <Check className="absolute inset-0 m-auto h-3.5 w-3.5 text-white drop-shadow-sm" />
                         )}
                       </button>
@@ -430,8 +471,9 @@ export function ConnectionForm() {
                 </div>
 
                 {/* Folder / Group */}
-                <FormField label="Group" icon={<FolderClosed className="h-3.5 w-3.5" />} optional>
+                <FormField label="Group" icon={<FolderClosed className="h-3.5 w-3.5" />} optional id={`${fieldId}-group`}>
                   <input
+                    id={`${fieldId}-group`}
                     type="text"
                     value={folder === 'default' ? '' : folder}
                     onChange={(e) => setFolder(e.target.value || 'default')}
@@ -445,8 +487,10 @@ export function ConnectionForm() {
                   label="Startup Command"
                   icon={<TerminalIcon className="h-3.5 w-3.5" />}
                   optional
+                  id={`${fieldId}-cmd`}
                 >
                   <input
+                    id={`${fieldId}-cmd`}
                     type="text"
                     value={startupCommand}
                     onChange={(e) => setStartupCommand(e.target.value)}
@@ -460,14 +504,14 @@ export function ConnectionForm() {
                   <button
                     type="button"
                     onClick={closeForm}
-                    className="rounded-lg px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                    className="btn-ghost"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="btn-primary"
                   >
                     {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     {isSaving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
@@ -487,17 +531,22 @@ function FormField({
   icon,
   children,
   required,
-  optional
+  optional,
+  id
 }: {
   label: string
   icon: React.ReactNode
   children: React.ReactNode
   required?: boolean
   optional?: boolean
+  id?: string
 }) {
   return (
     <div>
-      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <label
+        htmlFor={id}
+        className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+      >
         {icon}
         {label}
         {required && <span className="text-destructive/70">*</span>}

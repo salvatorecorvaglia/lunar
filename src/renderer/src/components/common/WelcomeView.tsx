@@ -44,7 +44,7 @@ export function WelcomeView() {
     <div className="flex h-full items-center justify-center bg-background">
       {/* Subtle radial glow behind content */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="h-[500px] w-[500px] rounded-full bg-gradient-to-br from-indigo-500/[0.04] to-violet-500/[0.04] blur-3xl" />
+        <div className="h-[500px] w-[500px] rounded-full bg-gradient-to-br from-indigo-500/[0.07] to-violet-500/[0.07] blur-3xl" />
       </div>
 
       <motion.div

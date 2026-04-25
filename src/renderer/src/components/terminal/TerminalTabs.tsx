@@ -4,6 +4,7 @@ import { motion, Reorder } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useTerminalStore, type TerminalSession } from '@/stores/terminal-store'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { PromptDialog } from '@/components/common/PromptDialog'
 import { ContextMenu, type ContextMenuItem } from '@/components/common/ContextMenu'
 import { connectToHost } from '@/lib/ssh'
 
@@ -24,6 +25,7 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
     closeTabsToRight
   } = useTerminalStore()
   const [closingTabId, setClosingTabId] = useState<string | null>(null)
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null)
 
   const handleCloseTab = (sessionId: string) => {
     const session = sessions.get(sessionId)
@@ -34,17 +36,9 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
     }
   }
 
-  const handleRename = useCallback(
-    (sessionId: string) => {
-      const session = sessions.get(sessionId)
-      if (!session) return
-      const newTitle = window.prompt('Rename tab:', session.title || session.connectionName)
-      if (newTitle != null && newTitle.trim()) {
-        renameTab(sessionId, newTitle.trim())
-      }
-    },
-    [sessions, renameTab]
-  )
+  const handleRename = useCallback((sessionId: string) => {
+    setRenamingTabId(sessionId)
+  }, [])
 
   const handleDuplicate = useCallback(
     (sessionId: string) => {
@@ -104,6 +98,25 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
           setClosingTabId(null)
         }}
         onCancel={() => setClosingTabId(null)}
+      />
+
+      <PromptDialog
+        open={!!renamingTabId}
+        title="Rename tab"
+        placeholder="Tab name"
+        defaultValue={
+          renamingTabId
+            ? (sessions.get(renamingTabId)?.title ||
+                sessions.get(renamingTabId)?.connectionName ||
+                '')
+            : ''
+        }
+        confirmLabel="Rename"
+        onConfirm={(newTitle) => {
+          if (renamingTabId) renameTab(renamingTabId, newTitle)
+          setRenamingTabId(null)
+        }}
+        onCancel={() => setRenamingTabId(null)}
       />
     </div>
   )

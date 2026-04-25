@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Terminal, Plus } from 'lucide-react'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useConnectionStore } from '@/stores/connection-store'
@@ -6,11 +6,13 @@ import { terminalThemes } from '@/themes/terminal'
 import { connectToHost } from '@/lib/ssh'
 import { TerminalTabs } from './TerminalTabs'
 import { SplitPane } from './SplitPane'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 export { connectToHost }
 
 export function TerminalView() {
   const { splitTree, terminalTheme } = useTerminalStore()
+  const [closingTabId, setClosingTabId] = useState<string | null>(null)
 
   const handleNewTab = useCallback(() => {
     const { activeConnectionId } = useConnectionStore.getState()
@@ -21,13 +23,27 @@ export function TerminalView() {
     }
   }, [])
 
-  // Keyboard shortcuts: Cmd+1..9 for tab switching, Cmd+Shift+]/[ for next/prev
+  // Keyboard shortcuts: Cmd+1..9 for tab switching, Cmd+Shift+]/[ for next/prev, Cmd+W close tab
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!e.metaKey && !e.ctrlKey) return
 
-      const { tabOrder, setActiveTab, activeTabId } = useTerminalStore.getState()
+      const { tabOrder, setActiveTab, activeTabId, sessions, closeTab } =
+        useTerminalStore.getState()
       if (tabOrder.length === 0) return
+
+      // Cmd+W — close active tab
+      if (e.key === 'w' && !e.shiftKey) {
+        e.preventDefault()
+        if (!activeTabId) return
+        const session = sessions.get(activeTabId)
+        if (session && (session.status === 'connected' || session.status === 'connecting')) {
+          setClosingTabId(activeTabId)
+        } else {
+          closeTab(activeTabId)
+        }
+        return
+      }
 
       // Cmd+1 through Cmd+9
       const digit = parseInt(e.key, 10)
@@ -69,26 +85,36 @@ export function TerminalView() {
         {splitTree ? (
           <SplitPane node={splitTree} />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-4">
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
               <Terminal className="h-7 w-7 text-muted-foreground/30" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-foreground/40">No active sessions</p>
-              <p className="mt-1 text-xs text-muted-foreground/40">
+              <p className="text-sm font-medium text-foreground/60">No active sessions</p>
+              <p className="mt-1 text-xs text-muted-foreground/60">
                 Select a connection from the sidebar to begin
               </p>
             </div>
-            <button
-              onClick={handleNewTab}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-            >
+            <button onClick={handleNewTab} className="btn-outline mt-1">
               <Plus className="h-3.5 w-3.5" />
               New Session
             </button>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!closingTabId}
+        title="Close active session?"
+        message="This will disconnect the SSH session. Are you sure?"
+        confirmLabel="Disconnect"
+        destructive
+        onConfirm={() => {
+          if (closingTabId) useTerminalStore.getState().closeTab(closingTabId)
+          setClosingTabId(null)
+        }}
+        onCancel={() => setClosingTabId(null)}
+      />
     </div>
   )
 }

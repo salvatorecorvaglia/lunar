@@ -21,7 +21,12 @@ function getInitialTheme(): AppTheme {
 }
 
 function applyTheme(theme: AppTheme): void {
-  document.documentElement.classList.toggle('dark', theme === 'dark')
+  const root = document.documentElement
+  root.classList.toggle('dark', theme === 'dark')
+  // Enable smooth theme transitions after initial load
+  if (!root.classList.contains('theme-transition')) {
+    requestAnimationFrame(() => root.classList.add('theme-transition'))
+  }
   try {
     localStorage.setItem('lunar-theme', theme)
   } catch {
