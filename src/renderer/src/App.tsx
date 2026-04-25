@@ -53,15 +53,22 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [setCommandPaletteOpen])
 
-  const showTerminal = activeView === 'terminal' && tabOrder.length > 0
+  const hasTerminals = tabOrder.length > 0
+  const showTerminal = activeView === 'terminal' && hasTerminals
   const showSftp = activeView === 'sftp'
+  const showWelcome = !showTerminal && !showSftp
 
   return (
     <>
       <AppShell>
-        {showTerminal && <TerminalView />}
+        {/* Keep TerminalView mounted across view switches so xterm buffers/history survive */}
+        {hasTerminals && (
+          <div className={showTerminal ? 'h-full' : 'hidden'}>
+            <TerminalView />
+          </div>
+        )}
         {showSftp && <SftpManager />}
-        {!showTerminal && !showSftp && <WelcomeView />}
+        {showWelcome && <WelcomeView />}
       </AppShell>
 
       {/* Overlays */}
