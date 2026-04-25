@@ -116,11 +116,7 @@ export function ConfirmDialog({
                 </div>
               </div>
               <div className="mt-4 flex justify-end gap-2">
-                <button
-                  data-cancel
-                  onClick={onCancel}
-                  className="btn-ghost"
-                >
+                <button data-cancel onClick={onCancel} className="btn-ghost">
                   {cancelLabel}
                 </button>
                 <button

@@ -106,9 +106,9 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
         placeholder="Tab name"
         defaultValue={
           renamingTabId
-            ? (sessions.get(renamingTabId)?.title ||
-                sessions.get(renamingTabId)?.connectionName ||
-                '')
+            ? sessions.get(renamingTabId)?.title ||
+              sessions.get(renamingTabId)?.connectionName ||
+              ''
             : ''
         }
         confirmLabel="Rename"

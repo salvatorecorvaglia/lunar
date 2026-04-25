@@ -28,8 +28,12 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
   setQuickConnectValue: (value) => set({ quickConnectValue: value }),
   setConnectionFormOpen: (open) => set({ connectionFormOpen: open }),
   setEditingConnectionId: (id) => set({ editingConnectionId: id }),
-  openEditForm: (id) => set({ connectionFormOpen: true, editingConnectionId: id, duplicatingConnectionId: null }),
-  openCreateForm: () => set({ connectionFormOpen: true, editingConnectionId: null, duplicatingConnectionId: null }),
-  openDuplicateForm: (id) => set({ connectionFormOpen: true, editingConnectionId: null, duplicatingConnectionId: id }),
-  closeForm: () => set({ connectionFormOpen: false, editingConnectionId: null, duplicatingConnectionId: null })
+  openEditForm: (id) =>
+    set({ connectionFormOpen: true, editingConnectionId: id, duplicatingConnectionId: null }),
+  openCreateForm: () =>
+    set({ connectionFormOpen: true, editingConnectionId: null, duplicatingConnectionId: null }),
+  openDuplicateForm: (id) =>
+    set({ connectionFormOpen: true, editingConnectionId: null, duplicatingConnectionId: id }),
+  closeForm: () =>
+    set({ connectionFormOpen: false, editingConnectionId: null, duplicatingConnectionId: null })
 }))

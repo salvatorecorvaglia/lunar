@@ -245,7 +245,11 @@ export function ConnectionForm() {
                     <Server className="h-4 w-4 text-primary" />
                   </div>
                   <h2 className="text-base font-semibold text-foreground">
-                    {isEditing ? 'Edit Connection' : duplicatingConnection ? 'Duplicate Connection' : 'New Connection'}
+                    {isEditing
+                      ? 'Edit Connection'
+                      : duplicatingConnection
+                        ? 'Duplicate Connection'
+                        : 'New Connection'}
                   </h2>
                 </div>
                 <button onClick={closeForm} className="btn-icon" aria-label="Close">
@@ -280,7 +284,12 @@ export function ConnectionForm() {
                 {/* Host + Port */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
-                    <FormField label="Host" icon={<Globe className="h-3.5 w-3.5" />} required id={`${fieldId}-host`}>
+                    <FormField
+                      label="Host"
+                      icon={<Globe className="h-3.5 w-3.5" />}
+                      required
+                      id={`${fieldId}-host`}
+                    >
                       <input
                         id={`${fieldId}-host`}
                         type="text"
@@ -296,7 +305,11 @@ export function ConnectionForm() {
                       />
                     </FormField>
                   </div>
-                  <FormField label="Port" icon={<Hash className="h-3.5 w-3.5" />} id={`${fieldId}-port`}>
+                  <FormField
+                    label="Port"
+                    icon={<Hash className="h-3.5 w-3.5" />}
+                    id={`${fieldId}-port`}
+                  >
                     <input
                       id={`${fieldId}-port`}
                       type="number"
@@ -309,7 +322,12 @@ export function ConnectionForm() {
                 </div>
 
                 {/* Username */}
-                <FormField label="Username" icon={<User className="h-3.5 w-3.5" />} required id={`${fieldId}-user`}>
+                <FormField
+                  label="Username"
+                  icon={<User className="h-3.5 w-3.5" />}
+                  required
+                  id={`${fieldId}-user`}
+                >
                   <input
                     id={`${fieldId}-user`}
                     type="text"
@@ -331,7 +349,11 @@ export function ConnectionForm() {
                     <Key className="h-3.5 w-3.5" />
                     Authentication
                   </label>
-                  <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Authentication type">
+                  <div
+                    className="grid grid-cols-3 gap-2"
+                    role="radiogroup"
+                    aria-label="Authentication type"
+                  >
                     {AUTH_TYPES.map((type) => (
                       <button
                         key={type.value}
@@ -363,7 +385,11 @@ export function ConnectionForm() {
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.15 }}
                     >
-                      <FormField label="Password" icon={<Lock className="h-3.5 w-3.5" />} id={`${fieldId}-pass`}>
+                      <FormField
+                        label="Password"
+                        icon={<Lock className="h-3.5 w-3.5" />}
+                        id={`${fieldId}-pass`}
+                      >
                         <div className="relative">
                           <input
                             id={`${fieldId}-pass`}
@@ -424,7 +450,11 @@ export function ConnectionForm() {
                       </FormField>
 
                       {authType === 'key+passphrase' && (
-                        <FormField label="Passphrase" icon={<Lock className="h-3.5 w-3.5" />} id={`${fieldId}-phrase`}>
+                        <FormField
+                          label="Passphrase"
+                          icon={<Lock className="h-3.5 w-3.5" />}
+                          id={`${fieldId}-phrase`}
+                        >
                           <input
                             id={`${fieldId}-phrase`}
                             type="password"
@@ -471,7 +501,12 @@ export function ConnectionForm() {
                 </div>
 
                 {/* Folder / Group */}
-                <FormField label="Group" icon={<FolderClosed className="h-3.5 w-3.5" />} optional id={`${fieldId}-group`}>
+                <FormField
+                  label="Group"
+                  icon={<FolderClosed className="h-3.5 w-3.5" />}
+                  optional
+                  id={`${fieldId}-group`}
+                >
                   <input
                     id={`${fieldId}-group`}
                     type="text"
@@ -501,18 +536,10 @@ export function ConnectionForm() {
 
                 {/* Actions */}
                 <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={closeForm}
-                    className="btn-ghost"
-                  >
+                  <button type="button" onClick={closeForm} className="btn-ghost">
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="btn-primary"
-                  >
+                  <button type="submit" disabled={isSaving} className="btn-primary">
                     {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     {isSaving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
                   </button>
