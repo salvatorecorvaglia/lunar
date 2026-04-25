@@ -8,6 +8,7 @@ export interface AppSettings {
   'ssh.autoReconnect': boolean
   'ssh.keepAliveInterval': number
   'ssh.maxReconnectAttempts': number
+  'ssh.readyTimeout': number
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -19,5 +20,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   'transfer.concurrency': 3,
   'ssh.autoReconnect': true,
   'ssh.keepAliveInterval': 10000,
-  'ssh.maxReconnectAttempts': 5
+  'ssh.maxReconnectAttempts': 5,
+  'ssh.readyTimeout': 30000
 }

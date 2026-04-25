@@ -3,6 +3,7 @@ import { app } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import type { AuthType } from '@shared/types/connection'
+import log from '../lib/logger'
 
 /** Shape of a row in the `connections` table (snake_case DB columns). */
 export interface ConnectionRow {
@@ -40,6 +41,12 @@ export function getDatabase(): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
 
+  // Check database integrity
+  const integrityResult = db.pragma('integrity_check') as { integrity_check: string }[]
+  if (integrityResult[0]?.integrity_check !== 'ok') {
+    log.warn('[database] Integrity check failed:', integrityResult)
+  }
+
   runMigrations(db)
 
   return db
@@ -73,7 +80,7 @@ function runMigrations(db: Database.Database): void {
       insertMigration.run(migration.name)
     })
     transaction()
-    console.log(`[DB] Applied migration: ${migration.name}`)
+    log.info(`[DB] Applied migration: ${migration.name}`)
   }
 }
 
@@ -152,6 +159,20 @@ function getMigrations(): { name: string; sql: string }[] {
       `
     }
   ]
+}
+
+/** Read a single setting from the DB, returning the parsed value or the provided default. */
+export function getSetting<T>(key: string, defaultValue: T): T {
+  const db = getDatabase()
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
+    | { value: string }
+    | undefined
+  if (!row) return defaultValue
+  try {
+    return JSON.parse(row.value) as T
+  } catch {
+    return defaultValue
+  }
 }
 
 export function closeDatabase(): void {

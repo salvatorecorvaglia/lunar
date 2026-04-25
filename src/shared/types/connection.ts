@@ -34,6 +34,19 @@ export interface UpdateConnectionInput extends Partial<CreateConnectionInput> {
   id: string
 }
 
+/** Connection data for import/export (no credentials or internal IDs). */
+export interface ExportedConnection {
+  name: string
+  host: string
+  port: number
+  username: string
+  authType: AuthType
+  privateKeyPath?: string
+  folder?: string
+  colorTag?: string
+  startupCommand?: string
+}
+
 export interface ConnectionHistory {
   id: string
   connectionId: string

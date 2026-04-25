@@ -20,6 +20,17 @@ export interface SftpStatParams {
   path: string
 }
 
+export interface SftpStatResult {
+  size: number
+  mode: number
+  modifiedAt: number
+  uid: number
+  gid: number
+  isDirectory: boolean
+  isSymlink: boolean
+  permissions: string
+}
+
 export interface SftpMkdirParams {
   sessionId: string
   path: string
@@ -66,4 +77,5 @@ export interface FileEntry {
   modifiedAt: number
   isDirectory: boolean
   isSymlink?: boolean
+  permissions?: string
 }

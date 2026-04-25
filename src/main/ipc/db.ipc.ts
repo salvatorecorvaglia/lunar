@@ -1,11 +1,13 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog } from 'electron'
+import { readFile } from 'fs/promises'
 import { v4 as uuidv4 } from 'uuid'
 import { IPC } from '@shared/constants'
 import { getDatabase, type ConnectionRow } from '../services/database'
 import type {
   Connection,
   CreateConnectionInput,
-  UpdateConnectionInput
+  UpdateConnectionInput,
+  ExportedConnection
 } from '@shared/types/connection'
 import { storeCredential, deleteCredential } from '../services/credential-store'
 
@@ -153,6 +155,98 @@ export function registerDbHandlers(): void {
   ipcMain.handle(IPC.CONNECTION_DELETE, (_event, id: string) => {
     db.prepare('DELETE FROM connections WHERE id = ?').run(id)
     deleteCredential(id)
+  })
+
+  ipcMain.handle(IPC.CONNECTION_EXPORT, (): ExportedConnection[] => {
+    const rows = db.prepare('SELECT * FROM connections ORDER BY name ASC').all() as ConnectionRow[]
+    return rows.map((row) => ({
+      name: row.name,
+      host: row.host,
+      port: row.port,
+      username: row.username,
+      authType: row.auth_type,
+      ...(row.private_key_path ? { privateKeyPath: row.private_key_path } : {}),
+      ...(row.folder && row.folder !== 'default' ? { folder: row.folder } : {}),
+      ...(row.color_tag ? { colorTag: row.color_tag } : {}),
+      ...(row.startup_command ? { startupCommand: row.startup_command } : {})
+    }))
+  })
+
+  ipcMain.handle(IPC.CONNECTION_IMPORT, (_event, connections: ExportedConnection[]): number => {
+    if (!Array.isArray(connections)) throw new Error('Expected an array of connections')
+
+    let imported = 0
+    const insert = db.prepare(
+      `INSERT INTO connections (id, name, host, port, username, auth_type, private_key_path, folder, color_tag, startup_command, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+
+    for (const conn of connections) {
+      if (!conn.name || !conn.host || !conn.username) continue
+
+      // Skip duplicates (same name+host+username)
+      const existing = db
+        .prepare('SELECT id FROM connections WHERE name = ? AND host = ? AND username = ?')
+        .get(conn.name, conn.host, conn.username)
+      if (existing) continue
+
+      const id = uuidv4()
+      const now = Math.floor(Date.now() / 1000)
+      insert.run(
+        id,
+        conn.name,
+        conn.host,
+        conn.port || 22,
+        conn.username,
+        conn.authType || 'password',
+        conn.privateKeyPath || null,
+        conn.folder || 'default',
+        conn.colorTag || null,
+        conn.startupCommand || null,
+        now,
+        now
+      )
+      imported++
+    }
+    return imported
+  })
+
+  ipcMain.handle(IPC.CONNECTION_IMPORT_FROM_FILE, async (): Promise<number> => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || result.filePaths.length === 0) return -1
+
+    const content = await readFile(result.filePaths[0], 'utf-8')
+    const connections = JSON.parse(content) as ExportedConnection[]
+    if (!Array.isArray(connections)) throw new Error('Invalid file format: expected an array')
+
+    // Reuse the import logic via IPC invoke
+    const db = getDatabase()
+    const insert = db.prepare(
+      `INSERT INTO connections (id, name, host, port, username, auth_type, private_key_path, folder, color_tag, startup_command, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    let imported = 0
+    for (const conn of connections) {
+      if (!conn.name || !conn.host || !conn.username) continue
+      const existing = db
+        .prepare('SELECT id FROM connections WHERE name = ? AND host = ? AND username = ?')
+        .get(conn.name, conn.host, conn.username)
+      if (existing) continue
+
+      const id = uuidv4()
+      const now = Math.floor(Date.now() / 1000)
+      insert.run(
+        id, conn.name, conn.host, conn.port || 22, conn.username,
+        conn.authType || 'password', conn.privateKeyPath || null,
+        conn.folder || 'default', conn.colorTag || null,
+        conn.startupCommand || null, now, now
+      )
+      imported++
+    }
+    return imported
   })
 
   // Settings

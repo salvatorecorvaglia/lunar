@@ -46,4 +46,4 @@ export type PaneNode =
   | { type: 'terminal'; sessionId: string }
   | { type: 'split'; direction: SplitDirection; children: [PaneNode, PaneNode]; ratio: number }
 
-export type TerminalThemeName = 'dracula' | 'nord' | 'tokyo-night'
+export type TerminalThemeName = 'dracula' | 'nord' | 'tokyo-night' | 'solarized-dark' | 'gruvbox' | 'one-dark' | 'monokai'

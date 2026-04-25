@@ -1,5 +1,5 @@
 import { ipcMain, dialog } from 'electron'
-import { readdir, stat, lstat } from 'fs/promises'
+import { readdir, stat, lstat, writeFile } from 'fs/promises'
 import { join, basename } from 'path'
 import { homedir } from 'os'
 import { IPC } from '@shared/constants'
@@ -52,6 +52,28 @@ export function registerShellHandlers(): void {
       }
 
       return result.filePaths[0]
+    }
+  )
+
+  ipcMain.handle(
+    IPC.SHELL_SAVE_FILE_DIALOG,
+    async (
+      _event,
+      options: {
+        defaultPath?: string
+        filters?: { name: string; extensions: string[] }[]
+        content: string
+      }
+    ) => {
+      const result = await dialog.showSaveDialog({
+        defaultPath: options.defaultPath,
+        filters: options.filters
+      })
+
+      if (result.canceled || !result.filePath) return null
+
+      await writeFile(result.filePath, options.content, 'utf-8')
+      return result.filePath
     }
   )
 

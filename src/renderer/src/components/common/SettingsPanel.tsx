@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState, useCallback } from 'react'
-import { X, Monitor, Terminal, Upload, Wifi, Moon, Sun, Info } from 'lucide-react'
+import { X, Monitor, Terminal, Upload, Download, Wifi, Moon, Sun, Info, Database } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
 import { useTerminalStore } from '@/stores/terminal-store'
@@ -16,7 +17,11 @@ const TERMINAL_THEMES: {
 }[] = [
   { value: 'dracula', label: 'Dracula', bg: '#282a36', fg: '#f8f8f2', accent: '#bd93f9' },
   { value: 'nord', label: 'Nord', bg: '#2e3440', fg: '#d8dee9', accent: '#88c0d0' },
-  { value: 'tokyo-night', label: 'Tokyo Night', bg: '#1a1b26', fg: '#a9b1d6', accent: '#7aa2f7' }
+  { value: 'tokyo-night', label: 'Tokyo Night', bg: '#1a1b26', fg: '#a9b1d6', accent: '#7aa2f7' },
+  { value: 'solarized-dark', label: 'Solarized', bg: '#002b36', fg: '#839496', accent: '#268bd2' },
+  { value: 'gruvbox', label: 'Gruvbox', bg: '#282828', fg: '#ebdbb2', accent: '#fabd2f' },
+  { value: 'one-dark', label: 'One Dark', bg: '#282c34', fg: '#abb2bf', accent: '#61afef' },
+  { value: 'monokai', label: 'Monokai', bg: '#272822', fg: '#f8f8f2', accent: '#a6e22e' }
 ]
 
 const overlayVariants = {
@@ -36,6 +41,7 @@ export function SettingsPanel() {
   const { terminalTheme, setTerminalTheme, fontSize, setFontSize, scrollback, setScrollback } = useTerminalStore()
   const [concurrency, setConcurrency] = useState(DEFAULT_SETTINGS['transfer.concurrency'])
   const [autoReconnect, setAutoReconnect] = useState(DEFAULT_SETTINGS['ssh.autoReconnect'])
+  const [readyTimeout, setReadyTimeout] = useState(DEFAULT_SETTINGS['ssh.readyTimeout'] / 1000)
   const [appVersion, setAppVersion] = useState('0.0.0')
 
   // Load settings from DB on open
@@ -50,6 +56,8 @@ export function SettingsPanel() {
         setConcurrency(Number(settings['transfer.concurrency']))
       if (settings['ssh.autoReconnect'] != null)
         setAutoReconnect(Boolean(settings['ssh.autoReconnect']))
+      if (settings['ssh.readyTimeout'] != null)
+        setReadyTimeout(Number(settings['ssh.readyTimeout']) / 1000)
     })
   }, [settingsOpen, setFontSize, setScrollback])
 
@@ -203,6 +211,17 @@ export function SettingsPanel() {
                     persistSetting('ssh.autoReconnect', v)
                   }}
                 />
+                <EditableNumberRow
+                  label="Connection timeout"
+                  value={readyTimeout}
+                  min={5}
+                  max={120}
+                  suffix="s"
+                  onChange={(v) => {
+                    setReadyTimeout(v)
+                    persistSetting('ssh.readyTimeout', v * 1000)
+                  }}
+                />
                 <SettingRow label="Keep-alive interval" value="10s" />
                 <SettingRow label="Max reconnect attempts" value="5" />
               </Section>
@@ -219,6 +238,58 @@ export function SettingsPanel() {
                     persistSetting('transfer.concurrency', v)
                   }}
                 />
+              </Section>
+
+              {/* Data */}
+              <Section title="Data" icon={<Database className="h-4 w-4" />}>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const connections = await window.api.connections.export()
+                        if (connections.length === 0) {
+                          toast.info('No connections to export')
+                          return
+                        }
+                        const content = JSON.stringify(connections, null, 2)
+                        const saved = await window.api.shell.saveFileDialog({
+                          defaultPath: 'lunar-connections.json',
+                          filters: [{ name: 'JSON', extensions: ['json'] }],
+                          content
+                        })
+                        if (saved) toast.success(`Exported ${connections.length} connections`)
+                      } catch (err: unknown) {
+                        toast.error(`Export failed: ${err instanceof Error ? err.message : String(err)}`)
+                      }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Export
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const count = await window.api.connections.importFromFile()
+                        if (count === -1) return // Dialog cancelled
+                        if (count > 0) {
+                          toast.success(`Imported ${count} connection${count > 1 ? 's' : ''}`)
+                        } else {
+                          toast.info('No new connections to import (all duplicates)')
+                        }
+                      } catch (err: unknown) {
+                        toast.error(`Import failed: ${err instanceof Error ? err.message : String(err)}`)
+                      }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Import
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground/60">
+                  Export and import connections (credentials are not included)
+                </p>
               </Section>
 
               {/* About */}

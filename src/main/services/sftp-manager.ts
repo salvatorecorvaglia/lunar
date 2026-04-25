@@ -2,20 +2,39 @@ import type { SFTPWrapper } from 'ssh2'
 import { sshManager } from './ssh-manager'
 import type { SftpEntry } from '@shared/types/sftp'
 import { transferQueue } from './transfer-queue'
+import log from '../lib/logger'
 
 type StepCallback = (transferred: number, chunk: number, total: number) => void
 
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+const IDLE_CHECK_INTERVAL_MS = 60 * 1000 // Check every 60 seconds
+
 class SftpManager {
   private sftpSessions = new Map<string, SFTPWrapper>()
-
+  private lastAccess = new Map<string, number>()
   constructor() {
     // Clear stale SFTP cache when the underlying SSH session disconnects/reconnects
     sshManager.onSessionDisconnect((sessionId) => {
       this.sftpSessions.delete(sessionId)
+      this.lastAccess.delete(sessionId)
     })
+
+    // Start idle cleanup timer
+    setInterval(() => this.cleanupIdle(), IDLE_CHECK_INTERVAL_MS)
+  }
+
+  private cleanupIdle(): void {
+    const now = Date.now()
+    for (const [sessionId, lastTime] of this.lastAccess) {
+      if (now - lastTime > IDLE_TIMEOUT_MS) {
+        log.info(`[SFTP] Closing idle session: ${sessionId}`)
+        this.closeSftp(sessionId)
+      }
+    }
   }
 
   async getSftp(sessionId: string): Promise<SFTPWrapper> {
+    this.lastAccess.set(sessionId, Date.now())
     const existing = this.sftpSessions.get(sessionId)
     if (existing) return existing
 
@@ -172,6 +191,35 @@ class SftpManager {
     })
   }
 
+  async stat(sessionId: string, remotePath: string): Promise<{
+    size: number
+    mode: number
+    modifiedAt: number
+    uid: number
+    gid: number
+    isDirectory: boolean
+    isSymlink: boolean
+    permissions: string
+  }> {
+    const sftp = await this.getSftp(sessionId)
+    return new Promise((resolve, reject) => {
+      sftp.stat(remotePath, (err, stats) => {
+        if (err) return reject(err)
+        const fileType = stats.mode & 0o170000
+        resolve({
+          size: stats.size,
+          mode: stats.mode,
+          modifiedAt: stats.mtime,
+          uid: stats.uid,
+          gid: stats.gid,
+          isDirectory: fileType === 0o040000,
+          isSymlink: fileType === 0o120000,
+          permissions: this.formatPermissions(stats.mode)
+        })
+      })
+    })
+  }
+
   /**
    * Low-level download used by transfer-queue.
    * Caller provides a step callback for progress tracking.
@@ -232,6 +280,7 @@ class SftpManager {
       sftp.end()
       this.sftpSessions.delete(sessionId)
     }
+    this.lastAccess.delete(sessionId)
   }
 
   private formatPermissions(mode: number): string {

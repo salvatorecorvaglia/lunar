@@ -35,6 +35,12 @@ class TransferQueue {
     localPath: string,
     remotePath: string
   ): Promise<string> {
+    // Prevent duplicate transfers
+    const isDuplicate = (t: QueuedTransfer) =>
+      t.type === type && t.sessionId === sessionId && t.localPath === localPath && t.remotePath === remotePath && !t.cancelled
+    const existing = this.queue.find(isDuplicate) || Array.from(this.active.values()).find(isDuplicate)
+    if (existing) return existing.id
+
     const transferId = uuidv4()
     const fileName = basename(type === 'upload' ? localPath : remotePath)
 

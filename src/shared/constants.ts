@@ -5,6 +5,9 @@ export const IPC = {
   CONNECTION_CREATE: 'connection:create',
   CONNECTION_UPDATE: 'connection:update',
   CONNECTION_DELETE: 'connection:delete',
+  CONNECTION_EXPORT: 'connection:export',
+  CONNECTION_IMPORT: 'connection:import',
+  CONNECTION_IMPORT_FROM_FILE: 'connection:import-from-file',
 
   // SSH
   SSH_CONNECT: 'ssh:connect',
@@ -33,6 +36,7 @@ export const IPC = {
   SHELL_HOME_DIR: 'shell:home-dir',
   SHELL_OPEN_FILE_DIALOG: 'shell:open-file-dialog',
   SHELL_JOIN_PATH: 'shell:join-path',
+  SHELL_SAVE_FILE_DIALOG: 'shell:save-file-dialog',
 
   // Transfers (main -> renderer)
   TRANSFER_PROGRESS: 'transfer:progress',

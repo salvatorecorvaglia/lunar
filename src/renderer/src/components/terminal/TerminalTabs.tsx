@@ -1,16 +1,18 @@
-import { useState } from 'react'
-import { Plus, X, WifiOff, Loader2 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { useState, useCallback, useMemo } from 'react'
+import { Plus, X, WifiOff, Loader2, Pencil, Copy, XCircle, ArrowRightToLine } from 'lucide-react'
+import { motion, Reorder } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useTerminalStore, type TerminalSession } from '@/stores/terminal-store'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { ContextMenu, type ContextMenuItem } from '@/components/common/ContextMenu'
+import { connectToHost } from '@/lib/ssh'
 
 interface TerminalTabsProps {
   onNewTab: () => void
 }
 
 export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
-  const { sessions, tabOrder, activeTabId, setActiveTab, closeTab } = useTerminalStore()
+  const { sessions, tabOrder, activeTabId, setActiveTab, setTabOrder, closeTab, renameTab, closeOtherTabs, closeTabsToRight } = useTerminalStore()
   const [closingTabId, setClosingTabId] = useState<string | null>(null)
 
   const handleCloseTab = (sessionId: string) => {
@@ -22,9 +24,36 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
     }
   }
 
+  const handleRename = useCallback(
+    (sessionId: string) => {
+      const session = sessions.get(sessionId)
+      if (!session) return
+      const newTitle = window.prompt('Rename tab:', session.title || session.connectionName)
+      if (newTitle != null && newTitle.trim()) {
+        renameTab(sessionId, newTitle.trim())
+      }
+    },
+    [sessions, renameTab]
+  )
+
+  const handleDuplicate = useCallback(
+    (sessionId: string) => {
+      const session = sessions.get(sessionId)
+      if (!session) return
+      connectToHost(session.connectionId)
+    },
+    [sessions]
+  )
+
   return (
     <div className="flex h-9 items-center border-b border-border/60 bg-card/60 no-select">
-      <div className="flex flex-1 items-center overflow-x-auto">
+      <Reorder.Group
+        axis="x"
+        values={tabOrder}
+        onReorder={setTabOrder}
+        className="flex flex-1 items-center overflow-x-auto"
+        as="div"
+      >
         {tabOrder.map((sessionId) => {
           const session = sessions.get(sessionId)
           if (!session) return null
@@ -32,14 +61,20 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
           return (
             <Tab
               key={sessionId}
+              sessionId={sessionId}
               session={session}
               isActive={sessionId === activeTabId}
+              tabCount={tabOrder.length}
               onActivate={() => setActiveTab(sessionId)}
               onClose={() => handleCloseTab(sessionId)}
+              onRename={() => handleRename(sessionId)}
+              onDuplicate={() => handleDuplicate(sessionId)}
+              onCloseOthers={() => closeOtherTabs(sessionId)}
+              onCloseToRight={() => closeTabsToRight(sessionId)}
             />
           )
         })}
-      </div>
+      </Reorder.Group>
       <button
         onClick={onNewTab}
         className="btn-icon mx-1 !p-1.5 flex-shrink-0"
@@ -66,15 +101,27 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
 }
 
 function Tab({
+  sessionId,
   session,
   isActive,
+  tabCount,
   onActivate,
-  onClose
+  onClose,
+  onRename,
+  onDuplicate,
+  onCloseOthers,
+  onCloseToRight
 }: {
+  sessionId: string
   session: TerminalSession
   isActive: boolean
+  tabCount: number
   onActivate: () => void
   onClose: () => void
+  onRename: () => void
+  onDuplicate: () => void
+  onCloseOthers: () => void
+  onCloseToRight: () => void
 }) {
   const statusIcon = () => {
     switch (session.status) {
@@ -90,37 +137,68 @@ function Tab({
     }
   }
 
+  const contextItems: ContextMenuItem[] = useMemo(
+    () => [
+      { label: 'Rename Tab', icon: <Pencil className="h-3.5 w-3.5" />, onClick: onRename },
+      { label: 'Duplicate Session', icon: <Copy className="h-3.5 w-3.5" />, onClick: onDuplicate },
+      {
+        label: 'Close Other Tabs',
+        icon: <XCircle className="h-3.5 w-3.5" />,
+        onClick: onCloseOthers,
+        separator: true
+      },
+      {
+        label: 'Close Tabs to the Right',
+        icon: <ArrowRightToLine className="h-3.5 w-3.5" />,
+        onClick: onCloseToRight
+      },
+      {
+        label: 'Close',
+        icon: <X className="h-3.5 w-3.5" />,
+        onClick: onClose,
+        separator: true,
+        destructive: true
+      }
+    ],
+    [onRename, onDuplicate, onCloseOthers, onCloseToRight, onClose, tabCount]
+  )
+
   return (
-    <motion.div
-      layout
-      transition={{ duration: 0.15 }}
+    <Reorder.Item
+      value={sessionId}
+      as="div"
       className={cn(
-        'group relative flex h-9 min-w-[120px] max-w-[200px] items-center gap-2 border-r border-border/40 px-3 text-xs cursor-pointer',
+        'group relative flex h-9 min-w-[120px] max-w-[200px] items-center gap-2 border-r border-border/40 px-3 text-xs cursor-grab active:cursor-grabbing',
         isActive
           ? 'bg-background text-foreground'
           : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
       )}
+      whileDrag={{ opacity: 0.8, scale: 1.02, zIndex: 10 }}
       onClick={onActivate}
     >
-      {isActive && (
-        <motion.div
-          layoutId="active-tab-indicator"
-          className="absolute inset-x-0 top-0 h-[2px] bg-primary"
-          transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-        />
-      )}
-      {statusIcon()}
-      <span className="truncate font-medium">{session.title || session.connectionName}</span>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onClose()
-        }}
-        className="ml-auto flex-shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 hover:bg-accent cursor-pointer"
-        aria-label="Close tab"
-      >
-        <X className="h-3 w-3" />
-      </button>
-    </motion.div>
+      <ContextMenu items={contextItems}>
+        <div className="flex h-full w-full items-center gap-2">
+          {isActive && (
+            <motion.div
+              layoutId="active-tab-indicator"
+              className="absolute inset-x-0 top-0 h-[2px] bg-primary"
+              transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+            />
+          )}
+          {statusIcon()}
+          <span className="truncate font-medium">{session.title || session.connectionName}</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
+            className="ml-auto flex-shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 hover:bg-accent cursor-pointer"
+            aria-label="Close tab"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      </ContextMenu>
+    </Reorder.Item>
   )
 }

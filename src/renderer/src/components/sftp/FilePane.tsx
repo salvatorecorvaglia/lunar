@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ChevronRight, Home, RefreshCw, ArrowUp, Eye, EyeOff } from 'lucide-react'
+import { ChevronRight, Home, RefreshCw, ArrowUp, Eye, EyeOff, FolderPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FileList } from './FileList'
 import type { FileEntry } from '@shared/types/sftp'
@@ -25,6 +25,8 @@ interface FilePaneProps {
   onPreview?: (entry: FileEntry) => void
   showHidden?: boolean
   onToggleHidden?: () => void
+  onMkdir?: () => void
+  onSelectAll?: () => void
   side: 'local' | 'remote'
 }
 
@@ -60,6 +62,8 @@ export function FilePane({
   onPreview,
   showHidden = true,
   onToggleHidden,
+  onMkdir,
+  onSelectAll,
   side
 }: FilePaneProps) {
   const breadcrumbs = splitBreadcrumbs(path)
@@ -128,6 +132,16 @@ export function FilePane({
           </span>
         </div>
         <div className="flex items-center gap-0.5">
+          {onMkdir && (
+            <button
+              onClick={onMkdir}
+              className="btn-icon !p-1"
+              title="New folder"
+              aria-label="New folder"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </button>
+          )}
           {onToggleHidden && (
             <button
               onClick={onToggleHidden}
@@ -200,6 +214,8 @@ export function FilePane({
             onDelete={onDelete}
             onCopyPath={onCopyPath}
             onPreview={onPreview}
+            showPermissions={side === 'remote'}
+            onSelectAll={onSelectAll}
             emptyMessage={isLoading ? 'Loading...' : 'Empty directory'}
           />
         )}

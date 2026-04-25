@@ -27,7 +27,10 @@ interface TerminalState {
   setTerminalTheme: (theme: TerminalThemeName) => void
   setFontSize: (size: number) => void
   setScrollback: (lines: number) => void
+  renameTab: (sessionId: string, title: string) => void
   closeTab: (sessionId: string) => void
+  closeOtherTabs: (sessionId: string) => void
+  closeTabsToRight: (sessionId: string) => void
 }
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
@@ -90,8 +93,39 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   setFontSize: (size) => set({ fontSize: size }),
   setScrollback: (lines) => set({ scrollback: lines }),
 
+  renameTab: (sessionId, title) =>
+    set((s) => {
+      const sessions = new Map(s.sessions)
+      const session = sessions.get(sessionId)
+      if (session) {
+        sessions.set(sessionId, { ...session, title })
+      }
+      return { sessions }
+    }),
+
   closeTab: (sessionId) => {
     window.api.ssh.disconnect(sessionId)
     get().removeSession(sessionId)
+  },
+
+  closeOtherTabs: (sessionId) => {
+    const { tabOrder } = get()
+    for (const id of tabOrder) {
+      if (id !== sessionId) {
+        window.api.ssh.disconnect(id)
+        get().removeSession(id)
+      }
+    }
+  },
+
+  closeTabsToRight: (sessionId) => {
+    const { tabOrder } = get()
+    const idx = tabOrder.indexOf(sessionId)
+    if (idx === -1) return
+    const toClose = tabOrder.slice(idx + 1)
+    for (const id of toClose) {
+      window.api.ssh.disconnect(id)
+      get().removeSession(id)
+    }
   }
 }))

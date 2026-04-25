@@ -4,9 +4,10 @@ import { v4 as uuidv4 } from 'uuid'
 import { IPC } from '@shared/constants'
 import { emitToRenderer } from './emit'
 import type { SessionStatus } from '@shared/types/terminal'
-import { getDatabase, type ConnectionRow } from './database'
+import { getDatabase, getSetting, type ConnectionRow } from './database'
 import { retrieveCredential } from './credential-store'
 import { verifyHostKey } from './host-key-store'
+import log from '../lib/logger'
 
 interface StreamListeners {
   onData: (data: Buffer) => void
@@ -22,6 +23,7 @@ interface SshSession {
   status: SessionStatus
   reconnectAttempts: number
   reconnectTimer: ReturnType<typeof setTimeout> | null
+  reconnecting: boolean
   _streamListeners?: StreamListeners
   historyId?: string
 }
@@ -64,7 +66,8 @@ class SshManager {
       shell: null,
       status: 'connecting',
       reconnectAttempts: 0,
-      reconnectTimer: null
+      reconnectTimer: null,
+      reconnecting: false
     }
 
     this.sessions.set(sessionId, session)
@@ -76,7 +79,7 @@ class SshManager {
       username: row.username,
       keepaliveInterval: 10000,
       keepaliveCountMax: 3,
-      readyTimeout: 30000,
+      readyTimeout: getSetting('ssh.readyTimeout', 30000),
       hostVerifier: (key: Buffer) => {
         const result = verifyHostKey(row.host, row.port, key, 'ssh-rsa')
         if (!result.trusted) {
@@ -168,9 +171,12 @@ class SshManager {
           // Store listener refs for cleanup
           session._streamListeners = { onData, onClose, onStderrData }
 
-          // Run startup command if configured
+          // Run startup command after shell is ready (wait for first data from server)
           if (row.startup_command) {
-            stream.write(row.startup_command + '\n')
+            const cmd = row.startup_command
+            stream.once('data', () => {
+              stream.write(cmd + '\n')
+            })
           }
 
           resolve({ success: true })
@@ -232,14 +238,16 @@ class SshManager {
 
   private attemptReconnect(sessionId: string): void {
     const session = this.sessions.get(sessionId)
-    if (!session) return
+    if (!session || session.reconnecting) return
 
     const maxAttempts = 5
     if (session.reconnectAttempts >= maxAttempts) {
+      session.reconnecting = false
       this.setStatus(session, 'error')
       return
     }
 
+    session.reconnecting = true
     session.reconnectAttempts++
     const delay = Math.min(1000 * Math.pow(2, session.reconnectAttempts - 1), 30000)
 
@@ -247,14 +255,17 @@ class SshManager {
 
     session.reconnectTimer = setTimeout(async () => {
       const sess = this.sessions.get(sessionId)
-      if (!sess || sess.status === 'connected') return
+      if (!sess || sess.status === 'connected') {
+        if (sess) sess.reconnecting = false
+        return
+      }
 
       // Clean up old client and stream listeners
       this.cleanupStreamListeners(sess)
       try {
         sess.client.end()
       } catch (err) {
-        console.error(`[SSH] Error ending client for reconnect ${sessionId}:`, err)
+        log.error(`[SSH] Error ending client for reconnect ${sessionId}:`, err)
       }
 
       // Remove session, then reconnect (atomic: connect re-adds it)
@@ -263,11 +274,15 @@ class SshManager {
       this.sessions.delete(sessionId)
       const result = await this.connect(sessionId, connectionId)
 
-      if (!result.success) {
+      if (result.success) {
+        const newSess = this.sessions.get(sessionId)
+        if (newSess) newSess.reconnecting = false
+      } else {
         // Restore reconnect attempt count on the new session
         const newSess = this.sessions.get(sessionId)
         if (newSess) {
           newSess.reconnectAttempts = reconnectAttempts
+          newSess.reconnecting = false
         }
         this.attemptReconnect(sessionId)
       }
@@ -276,7 +291,7 @@ class SshManager {
 
   sendData(sessionId: string, data: string): void {
     const session = this.sessions.get(sessionId)
-    if (session?.shell) {
+    if (session?.shell?.writable) {
       session.shell.write(data)
     }
   }
@@ -302,7 +317,7 @@ class SshManager {
       session.shell?.close()
       session.client.end()
     } catch (err) {
-      console.error(`[SSH] Error closing session ${sessionId}:`, err)
+      log.error(`[SSH] Error closing session ${sessionId}:`, err)
     }
 
     // Record disconnect in history

@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react'
+import { useMemo, useState, useRef, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   Folder,
@@ -33,6 +33,8 @@ interface FileListProps {
   onDelete?: (entry: FileEntry) => void
   onCopyPath?: (entry: FileEntry) => void
   onPreview?: (entry: FileEntry) => void
+  showPermissions?: boolean
+  onSelectAll?: () => void
   emptyMessage?: string
 }
 
@@ -119,10 +121,13 @@ export function FileList({
   onDelete,
   onCopyPath,
   onPreview,
+  showPermissions = false,
+  onSelectAll,
   emptyMessage = 'No files'
 }: FileListProps) {
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [focusedIndex, setFocusedIndex] = useState(-1)
 
   const sorted = useMemo(() => {
     return [...entries].sort((a, b) => {
@@ -163,6 +168,52 @@ export function FileList({
     overscan: 10
   })
 
+  const handleListKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (sorted.length === 0) return
+
+      switch (e.key) {
+        case 'ArrowDown': {
+          e.preventDefault()
+          const next = Math.min(focusedIndex + 1, sorted.length - 1)
+          setFocusedIndex(next)
+          onSelect(sorted[next].name)
+          virtualizer.scrollToIndex(next, { align: 'auto' })
+          break
+        }
+        case 'ArrowUp': {
+          e.preventDefault()
+          const prev = Math.max(focusedIndex - 1, 0)
+          setFocusedIndex(prev)
+          onSelect(sorted[prev].name)
+          virtualizer.scrollToIndex(prev, { align: 'auto' })
+          break
+        }
+        case 'Enter': {
+          if (focusedIndex >= 0 && focusedIndex < sorted.length) {
+            onOpen(sorted[focusedIndex])
+          }
+          break
+        }
+        case 'Delete':
+        case 'Backspace': {
+          if (focusedIndex >= 0 && focusedIndex < sorted.length && onDelete) {
+            onDelete(sorted[focusedIndex])
+          }
+          break
+        }
+        case 'a': {
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault()
+            onSelectAll?.()
+          }
+          break
+        }
+      }
+    },
+    [sorted, focusedIndex, onSelect, onOpen, onDelete, onSelectAll, virtualizer]
+  )
+
   if (entries.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -173,7 +224,7 @@ export function FileList({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden outline-none" tabIndex={0} onKeyDown={handleListKeyDown}>
       {/* Header */}
       <div className="flex items-center border-b border-border/60 bg-muted/20 text-[11px] font-medium text-muted-foreground/80 no-select">
         <button
@@ -188,6 +239,11 @@ export function FileList({
         >
           Size <SortIcon field="size" />
         </button>
+        {showPermissions && (
+          <div className="w-[84px] px-2 py-1.5 text-right">
+            Perms
+          </div>
+        )}
         <button
           onClick={() => handleSort('modifiedAt')}
           className="flex w-36 items-center justify-end gap-1 px-3 py-1.5 hover:text-foreground cursor-pointer"
@@ -235,12 +291,16 @@ export function FileList({
                   transform: `translateY(${virtualRow.start}px)`
                 }}
                 className={cn(
-                  'group flex items-center text-xs cursor-pointer border-b border-transparent outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  'group flex items-center text-xs cursor-pointer border-b border-transparent outline-none',
                   selection.has(entry.name)
                     ? 'bg-accent/80 border-b-border/30'
-                    : 'hover:bg-accent/30'
+                    : 'hover:bg-accent/30',
+                  focusedIndex === virtualRow.index && 'ring-1 ring-inset ring-ring/50'
                 )}
-                onClick={() => onSelect(entry.name)}
+                onClick={() => {
+                  setFocusedIndex(virtualRow.index)
+                  onSelect(entry.name)
+                }}
                 onDoubleClick={() => onOpen(entry)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') onOpen(entry)
@@ -261,6 +321,11 @@ export function FileList({
                 <div className="w-20 px-2 py-[7px] text-right text-muted-foreground/70 tabular-nums">
                   {entry.isDirectory ? '\u2014' : formatSize(entry.size)}
                 </div>
+                {showPermissions && (
+                  <div className="w-[84px] px-2 py-[7px] text-right font-mono text-[10px] text-muted-foreground/70">
+                    {entry.permissions || '\u2014'}
+                  </div>
+                )}
                 <div className="w-36 px-3 py-[7px] text-right text-muted-foreground/70 tabular-nums">
                   {formatDate(entry.modifiedAt)}
                 </div>

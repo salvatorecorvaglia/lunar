@@ -14,9 +14,11 @@ import type {
   TransferCompleteEvent,
   TransferErrorEvent
 } from '@shared/types/transfer'
-import type { CreateConnectionInput, UpdateConnectionInput } from '@shared/types/connection'
+import type { CreateConnectionInput, UpdateConnectionInput, ExportedConnection } from '@shared/types/connection'
 import type {
   SftpListParams,
+  SftpStatParams,
+  SftpStatResult,
   SftpMkdirParams,
   SftpRenameParams,
   SftpDeleteParams,
@@ -53,7 +55,12 @@ const api = {
     get: (id: string) => ipcRenderer.invoke(IPC.CONNECTION_GET, id),
     create: (input: CreateConnectionInput) => ipcRenderer.invoke(IPC.CONNECTION_CREATE, input),
     update: (input: UpdateConnectionInput) => ipcRenderer.invoke(IPC.CONNECTION_UPDATE, input),
-    delete: (id: string) => ipcRenderer.invoke(IPC.CONNECTION_DELETE, id)
+    delete: (id: string) => ipcRenderer.invoke(IPC.CONNECTION_DELETE, id),
+    export: () => ipcRenderer.invoke(IPC.CONNECTION_EXPORT) as Promise<ExportedConnection[]>,
+    import: (connections: ExportedConnection[]) =>
+      ipcRenderer.invoke(IPC.CONNECTION_IMPORT, connections) as Promise<number>,
+    importFromFile: () =>
+      ipcRenderer.invoke(IPC.CONNECTION_IMPORT_FROM_FILE) as Promise<number>
   },
 
   // SSH sessions
@@ -71,6 +78,7 @@ const api = {
   // SFTP operations
   sftp: {
     list: (params: SftpListParams) => ipcRenderer.invoke(IPC.SFTP_LIST, params),
+    stat: (params: SftpStatParams) => ipcRenderer.invoke(IPC.SFTP_STAT, params) as Promise<SftpStatResult>,
     mkdir: (params: SftpMkdirParams) => ipcRenderer.invoke(IPC.SFTP_MKDIR, params),
     rename: (params: SftpRenameParams) => ipcRenderer.invoke(IPC.SFTP_RENAME, params),
     delete: (params: SftpDeleteParams) => ipcRenderer.invoke(IPC.SFTP_DELETE, params),
@@ -84,6 +92,11 @@ const api = {
     readdir: (path: string) => ipcRenderer.invoke(IPC.SHELL_READDIR, path),
     homeDir: () => ipcRenderer.invoke(IPC.SHELL_HOME_DIR),
     openFileDialog: (options?: unknown) => ipcRenderer.invoke(IPC.SHELL_OPEN_FILE_DIALOG, options),
+    saveFileDialog: (options: {
+      defaultPath?: string
+      filters?: { name: string; extensions: string[] }[]
+      content: string
+    }) => ipcRenderer.invoke(IPC.SHELL_SAVE_FILE_DIALOG, options) as Promise<string | null>,
     joinPath: (base: string, fileName: string) =>
       ipcRenderer.invoke(IPC.SHELL_JOIN_PATH, { base, fileName }) as Promise<string>
   },

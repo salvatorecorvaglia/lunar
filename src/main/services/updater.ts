@@ -1,5 +1,6 @@
 import { autoUpdater } from 'electron-updater'
 import { emitToRenderer } from './emit'
+import log from '../lib/logger'
 
 let updateAvailable = false
 let updateVersion = ''
@@ -30,7 +31,7 @@ export function initAutoUpdater(): void {
   })
 
   autoUpdater.on('error', (err) => {
-    console.error('[Updater] Error:', err.message)
+    log.error('[Updater] Error:', err.message)
   })
 
   // Check for updates after a short delay
@@ -51,7 +52,7 @@ export function installUpdate(): void {
       autoUpdater.quitAndInstall(false, true)
     })
     .catch((err) => {
-      console.error('[Updater] Failed to download update:', err.message)
+      log.error('[Updater] Failed to download update:', err.message)
       notifyRenderer('update-error', { error: err.message })
     })
 }

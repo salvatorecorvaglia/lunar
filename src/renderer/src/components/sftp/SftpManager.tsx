@@ -27,6 +27,8 @@ export function SftpManager() {
     toggleLocalSelection,
     toggleRemoteSelection,
     setSftpSessionId,
+    setLocalSelection,
+    setRemoteSelection,
     showHiddenFiles,
     toggleHiddenFiles
   } = useSftpStore()
@@ -236,6 +238,22 @@ export function SftpManager() {
     toast.success('Path copied to clipboard')
   }, [])
 
+  // Create directory on remote
+  const handleRemoteMkdir = useCallback(async () => {
+    if (!sftpSessionId) return
+    const name = window.prompt('New folder name:')
+    if (!name) return
+
+    const newPath = remotePath === '/' ? `/${name}` : `${remotePath}/${name}`
+    try {
+      await window.api.sftp.mkdir({ sessionId: sftpSessionId, path: newPath })
+      toast.success(`Created folder "${name}"`)
+      invalidateSftp(sftpSessionId, remotePath)
+    } catch (err: unknown) {
+      toast.error(`Failed to create folder: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }, [sftpSessionId, remotePath, invalidateSftp])
+
   // Resize handle
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -302,6 +320,7 @@ export function SftpManager() {
             onDrop={handleLocalDrop}
             showHidden={showHiddenFiles}
             onToggleHidden={toggleHiddenFiles}
+            onSelectAll={() => setLocalSelection(new Set(localEntries.map((e) => e.name)))}
             side="local"
           />
         </div>
@@ -339,6 +358,8 @@ export function SftpManager() {
             onPreview={handleRemoteFileOpen}
             showHidden={showHiddenFiles}
             onToggleHidden={toggleHiddenFiles}
+            onMkdir={handleRemoteMkdir}
+            onSelectAll={() => setRemoteSelection(new Set(remoteEntries.map((e) => e.name)))}
             side="remote"
           />
         </div>
