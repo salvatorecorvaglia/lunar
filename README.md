@@ -74,28 +74,19 @@ npm run format             # Format code with Prettier
 
 ## Tech Stack
 
-| Layer         | Technology                |
-| ------------- | ------------------------- |
-| Framework     | Electron + electron-vite  |
-| Renderer      | React 18, Tailwind CSS v4 |
-| UI Components | Lucide React, CMDK, Sonner|
-| Terminal      | xterm.js (WebGL addon)    |
-| SSH/SFTP      | ssh2                      |
-| Database      | better-sqlite3 (WAL mode) |
-| State         | Zustand                   |
-| Data Fetching | TanStack React Query      |
-| Animations    | Framer Motion             |
-| Packaging     | electron-builder          |
-| Testing       | Vitest, Testing Library   |
-
-## Keyboard Shortcuts
-
-| Shortcut     | Action          |
-| ------------ | --------------- |
-| `Cmd/Ctrl+K` | Command palette |
-| `Cmd/Ctrl+B` | Toggle sidebar  |
-| `Cmd/Ctrl+,` | Open settings   |
-| `Cmd/Ctrl+N` | New connection  |
+| Layer         | Technology                 |
+| ------------- | -------------------------- |
+| Framework     | Electron + electron-vite   |
+| Renderer      | React 18, Tailwind CSS v4  |
+| UI Components | Lucide React, CMDK, Sonner |
+| Terminal      | xterm.js (WebGL addon)     |
+| SSH/SFTP      | ssh2                       |
+| Database      | better-sqlite3 (WAL mode)  |
+| State         | Zustand                    |
+| Data Fetching | TanStack React Query       |
+| Animations    | Framer Motion              |
+| Packaging     | electron-builder           |
+| Testing       | Vitest, Testing Library    |
 
 ## 📝 Author
 
