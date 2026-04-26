@@ -67,10 +67,6 @@ function createWindow(): void {
     return mainWindow?.isMaximized() ?? false
   })
 
-  ipcMain.handle(IPC.APP_GET_VERSION, () => {
-    return app.getVersion()
-  })
-
   // HMR in dev, file:// in production
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
