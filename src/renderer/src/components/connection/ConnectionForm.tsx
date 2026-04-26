@@ -20,7 +20,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useConnectionStore } from '@/stores/connection-store'
-import { useCreateConnection, useUpdateConnection, useConnection } from '@/hooks/use-connections'
+import {
+  useCreateConnection,
+  useUpdateConnection,
+  useConnection,
+  useConnections
+} from '@/hooks/use-connections'
 import type { AuthType } from '@shared/types/connection'
 import { toast } from 'sonner'
 
@@ -67,6 +72,7 @@ export function ConnectionForm() {
     useConnectionStore()
   const { data: editingConnection } = useConnection(editingConnectionId)
   const { data: duplicatingConnection } = useConnection(duplicatingConnectionId)
+  const { data: existingConnections } = useConnections()
   const createMutation = useCreateConnection()
   const updateMutation = useUpdateConnection()
 
@@ -160,17 +166,46 @@ export function ConnectionForm() {
     setTouched((prev) => ({ ...prev, [field]: true }))
   }, [])
 
-  const fieldError = (field: string, value: string) => {
-    if (!touched[field]) return false
-    return !value.trim()
+  const errors: Record<string, string> = {}
+  if (!name.trim()) {
+    errors.name = 'Connection name is required'
+  } else if (
+    existingConnections?.some(
+      (c) =>
+        c.name.trim().toLowerCase() === name.trim().toLowerCase() && c.id !== editingConnectionId
+    )
+  ) {
+    errors.name = 'A connection with this name already exists'
   }
+  if (!host.trim()) {
+    errors.host = 'Host is required'
+  }
+  const portNum = parseInt(port, 10)
+  if (port.trim() === '' || Number.isNaN(portNum) || portNum < 1 || portNum > 65535) {
+    errors.port = 'Port must be between 1 and 65535'
+  }
+  if (!username.trim()) {
+    errors.username = 'Username is required'
+  }
+  if ((authType === 'key' || authType === 'key+passphrase') && !privateKeyPath.trim()) {
+    errors.privateKeyPath = 'Private key path is required'
+  }
+
+  const visibleError = (field: string): string | undefined =>
+    touched[field] ? errors[field] : undefined
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setTouched({ name: true, host: true, username: true })
+    setTouched({
+      name: true,
+      host: true,
+      port: true,
+      username: true,
+      privateKeyPath: true
+    })
 
-    if (!name.trim() || !host.trim() || !username.trim()) {
-      toast.error('Please fill in all required fields')
+    if (Object.keys(errors).length > 0) {
+      toast.error('Please fix the highlighted fields')
       return
     }
 
@@ -262,9 +297,10 @@ export function ConnectionForm() {
                 {/* Name */}
                 <FormField
                   label="Connection Name"
-                  icon={<Server className="h-3.5 w-3.5" />}
+                  icon={<Server className="h-3.5 w-3.5" aria-hidden="true" />}
                   required
                   id={`${fieldId}-name`}
+                  error={visibleError('name')}
                 >
                   <input
                     id={`${fieldId}-name`}
@@ -273,9 +309,11 @@ export function ConnectionForm() {
                     onChange={(e) => setName(e.target.value)}
                     onBlur={() => markTouched('name')}
                     placeholder="My Server"
+                    aria-invalid={!!visibleError('name')}
+                    aria-describedby={visibleError('name') ? `${fieldId}-name-error` : undefined}
                     className={cn(
                       'form-input',
-                      fieldError('name', name) && 'border-destructive/60 focus:border-destructive'
+                      visibleError('name') && 'border-destructive/60 focus:border-destructive'
                     )}
                     autoFocus
                   />
@@ -286,9 +324,10 @@ export function ConnectionForm() {
                   <div className="col-span-2">
                     <FormField
                       label="Host"
-                      icon={<Globe className="h-3.5 w-3.5" />}
+                      icon={<Globe className="h-3.5 w-3.5" aria-hidden="true" />}
                       required
                       id={`${fieldId}-host`}
+                      error={visibleError('host')}
                     >
                       <input
                         id={`${fieldId}-host`}
@@ -297,26 +336,38 @@ export function ConnectionForm() {
                         onChange={(e) => setHost(e.target.value)}
                         onBlur={() => markTouched('host')}
                         placeholder="192.168.1.100"
+                        aria-invalid={!!visibleError('host')}
+                        aria-describedby={
+                          visibleError('host') ? `${fieldId}-host-error` : undefined
+                        }
                         className={cn(
                           'form-input',
-                          fieldError('host', host) &&
-                            'border-destructive/60 focus:border-destructive'
+                          visibleError('host') && 'border-destructive/60 focus:border-destructive'
                         )}
                       />
                     </FormField>
                   </div>
                   <FormField
                     label="Port"
-                    icon={<Hash className="h-3.5 w-3.5" />}
+                    icon={<Hash className="h-3.5 w-3.5" aria-hidden="true" />}
                     id={`${fieldId}-port`}
+                    error={visibleError('port')}
                   >
                     <input
                       id={`${fieldId}-port`}
                       type="number"
+                      min={1}
+                      max={65535}
                       value={port}
                       onChange={(e) => setPort(e.target.value)}
+                      onBlur={() => markTouched('port')}
                       placeholder="22"
-                      className="form-input"
+                      aria-invalid={!!visibleError('port')}
+                      aria-describedby={visibleError('port') ? `${fieldId}-port-error` : undefined}
+                      className={cn(
+                        'form-input',
+                        visibleError('port') && 'border-destructive/60 focus:border-destructive'
+                      )}
                     />
                   </FormField>
                 </div>
@@ -324,9 +375,10 @@ export function ConnectionForm() {
                 {/* Username */}
                 <FormField
                   label="Username"
-                  icon={<User className="h-3.5 w-3.5" />}
+                  icon={<User className="h-3.5 w-3.5" aria-hidden="true" />}
                   required
                   id={`${fieldId}-user`}
+                  error={visibleError('username')}
                 >
                   <input
                     id={`${fieldId}-user`}
@@ -335,10 +387,13 @@ export function ConnectionForm() {
                     onChange={(e) => setUsername(e.target.value)}
                     onBlur={() => markTouched('username')}
                     placeholder="root"
+                    aria-invalid={!!visibleError('username')}
+                    aria-describedby={
+                      visibleError('username') ? `${fieldId}-user-error` : undefined
+                    }
                     className={cn(
                       'form-input',
-                      fieldError('username', username) &&
-                        'border-destructive/60 focus:border-destructive'
+                      visibleError('username') && 'border-destructive/60 focus:border-destructive'
                     )}
                   />
                 </FormField>
@@ -427,8 +482,10 @@ export function ConnectionForm() {
                     >
                       <FormField
                         label="Private Key Path"
-                        icon={<FileKey className="h-3.5 w-3.5" />}
+                        icon={<FileKey className="h-3.5 w-3.5" aria-hidden="true" />}
+                        required
                         id={`${fieldId}-key`}
+                        error={visibleError('privateKeyPath')}
                       >
                         <div className="flex gap-2">
                           <input
@@ -436,8 +493,17 @@ export function ConnectionForm() {
                             type="text"
                             value={privateKeyPath}
                             onChange={(e) => setPrivateKeyPath(e.target.value)}
+                            onBlur={() => markTouched('privateKeyPath')}
                             placeholder="~/.ssh/id_rsa"
-                            className="form-input flex-1"
+                            aria-invalid={!!visibleError('privateKeyPath')}
+                            aria-describedby={
+                              visibleError('privateKeyPath') ? `${fieldId}-key-error` : undefined
+                            }
+                            className={cn(
+                              'form-input flex-1',
+                              visibleError('privateKeyPath') &&
+                                'border-destructive/60 focus:border-destructive'
+                            )}
                           />
                           <button
                             type="button"
@@ -559,7 +625,8 @@ function FormField({
   children,
   required,
   optional,
-  id
+  id,
+  error
 }: {
   label: string
   icon: React.ReactNode
@@ -567,6 +634,7 @@ function FormField({
   required?: boolean
   optional?: boolean
   id?: string
+  error?: string
 }) {
   return (
     <div>
@@ -576,10 +644,23 @@ function FormField({
       >
         {icon}
         {label}
-        {required && <span className="text-destructive/70">*</span>}
+        {required && (
+          <span className="text-destructive/70" aria-hidden="true">
+            *
+          </span>
+        )}
         {optional && <span className="text-muted-foreground/50">(optional)</span>}
       </label>
       {children}
+      {error && (
+        <p
+          id={id ? `${id}-error` : undefined}
+          role="alert"
+          className="mt-1 text-xs text-destructive"
+        >
+          {error}
+        </p>
+      )}
     </div>
   )
 }

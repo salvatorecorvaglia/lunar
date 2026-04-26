@@ -28,6 +28,16 @@ function formatSpeed(bytesPerSec: number): string {
   return `${formatBytes(bytesPerSec)}/s`
 }
 
+function formatEta(remainingBytes: number, bytesPerSec: number): string | null {
+  if (bytesPerSec <= 0 || remainingBytes <= 0) return null
+  const seconds = Math.round(remainingBytes / bytesPerSec)
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  if (m < 60) return `${m}m ${seconds % 60}s`
+  const h = Math.floor(m / 60)
+  return `${h}h ${m % 60}m`
+}
+
 export function TransferQueue() {
   const {
     transfers,
@@ -76,28 +86,64 @@ export function TransferQueue() {
   const activeCount = items.filter((t) => t.status === 'active' || t.status === 'queued').length
   const completedCount = items.filter((t) => t.status === 'completed').length
 
+  const cancelAll = () => {
+    for (const item of items) {
+      if (item.status === 'active' || item.status === 'queued') {
+        cancelTransfer(item.id)
+        removeTransfer(item.id)
+      }
+    }
+  }
+
+  const summary =
+    activeCount === 0 && completedCount === 0
+      ? 'No transfers'
+      : [
+          activeCount > 0 ? `${activeCount} active` : null,
+          completedCount > 0 ? `${completedCount} completed` : null
+        ]
+          .filter(Boolean)
+          .join(', ')
+
   return (
     <div className="border-t border-border/60 bg-card/80">
       {/* Toggle bar */}
-      <button
-        onClick={toggleQueueExpanded}
-        className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 no-select cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
-          <Upload className="h-3.5 w-3.5" />
-          <span className="font-medium">
-            {activeCount > 0 ? `${activeCount} active` : ''}
-            {activeCount > 0 && completedCount > 0 ? ', ' : ''}
-            {completedCount > 0 ? `${completedCount} completed` : ''}
-            {activeCount === 0 && completedCount === 0 ? 'No transfers' : ''}
+      <div className="flex w-full items-center justify-between px-3 py-1.5 text-xs text-muted-foreground no-select">
+        <button
+          onClick={toggleQueueExpanded}
+          aria-expanded={queueExpanded}
+          aria-controls="transfer-queue-list"
+          className="flex flex-1 items-center gap-2 hover:text-foreground cursor-pointer"
+        >
+          <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="font-medium" aria-live="polite">
+            {summary}
           </span>
+        </button>
+        <div className="flex items-center gap-2">
+          {activeCount > 0 && (
+            <button
+              onClick={cancelAll}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive cursor-pointer"
+              aria-label="Cancel all active transfers"
+            >
+              <X className="h-3 w-3" aria-hidden="true" />
+              Cancel all
+            </button>
+          )}
+          <button
+            onClick={toggleQueueExpanded}
+            aria-label={queueExpanded ? 'Collapse transfer queue' : 'Expand transfer queue'}
+            className="rounded p-0.5 hover:text-foreground cursor-pointer"
+          >
+            {queueExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </button>
         </div>
-        {queueExpanded ? (
-          <ChevronDown className="h-3.5 w-3.5" />
-        ) : (
-          <ChevronUp className="h-3.5 w-3.5" />
-        )}
-      </button>
+      </div>
 
       <AnimatePresence>
         {queueExpanded && (
@@ -107,7 +153,7 @@ export function TransferQueue() {
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div className="max-h-[30vh] overflow-y-auto">
+            <div id="transfer-queue-list" className="max-h-[30vh] overflow-y-auto">
               {items.map((item) => (
                 <TransferRow
                   key={item.id}
@@ -147,6 +193,7 @@ function TransferRow({
 }) {
   const percent = item.size > 0 ? Math.round((item.transferred / item.size) * 100) : 0
   const isInProgress = item.status === 'active' || item.status === 'queued'
+  const eta = formatEta(item.size - item.transferred, item.bytesPerSec)
 
   const handleRemove = () => {
     if (isInProgress) {
@@ -159,9 +206,9 @@ function TransferRow({
     <div className="flex items-center gap-2.5 border-t border-border/40 px-3 py-2">
       {/* Icon */}
       {item.type === 'upload' ? (
-        <Upload className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
+        <Upload className="h-3.5 w-3.5 text-info flex-shrink-0" aria-hidden="true" />
       ) : (
-        <Download className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+        <Download className="h-3.5 w-3.5 text-success flex-shrink-0" aria-hidden="true" />
       )}
 
       {/* Info */}
@@ -182,7 +229,7 @@ function TransferRow({
           )}
           <span className="text-[10px] text-muted-foreground flex-shrink-0 tabular-nums">
             {item.status === 'active'
-              ? `${percent}% \u00b7 ${formatSpeed(item.bytesPerSec)}`
+              ? `${percent}% · ${formatSpeed(item.bytesPerSec)}${eta ? ` · ${eta} left` : ''}`
               : item.status === 'queued'
                 ? 'Queued'
                 : item.status === 'completed'
@@ -193,9 +240,9 @@ function TransferRow({
       </div>
 
       {/* Status icon */}
-      <div className="flex-shrink-0">
-        {item.status === 'active' && <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" />}
-        {item.status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+      <div className="flex-shrink-0" aria-hidden="true">
+        {item.status === 'active' && <Loader2 className="h-3.5 w-3.5 text-info animate-spin" />}
+        {item.status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5 text-success" />}
         {item.status === 'error' && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
       </div>
 

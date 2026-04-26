@@ -10,12 +10,19 @@ import {
   Sun,
   PanelLeft,
   Palette,
-  Server
+  Server,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/stores/ui-store'
 import { useTerminalStore } from '@/stores/terminal-store'
 import { useConnectionStore } from '@/stores/connection-store'
+import { useSftpStore } from '@/stores/sftp-store'
 import { useConnections } from '@/hooks/use-connections'
 import { connectToHost } from '@/lib/ssh'
 
@@ -27,7 +34,11 @@ interface Command {
   category: string
   action: () => void
   keywords?: string[]
+  shortcut?: string[]
 }
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+const MOD = isMac ? '⌘' : 'Ctrl'
 
 const overlayVariants = {
   initial: { opacity: 0 },
@@ -56,8 +67,9 @@ export function CommandPalette() {
     setTheme,
     setSettingsOpen
   } = useUIStore()
-  const { setTerminalTheme } = useTerminalStore()
+  const { setTerminalTheme, activeTabId, tabOrder, setActiveTab, closeTab } = useTerminalStore()
   const { openCreateForm } = useConnectionStore()
+  const { toggleHiddenFiles, showHiddenFiles } = useSftpStore()
   const { data: connections = [] } = useConnections()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -78,15 +90,16 @@ export function CommandPalette() {
         id: 'new-connection',
         label: 'New Connection',
         description: 'Create a new SSH connection',
-        icon: <Plus className="h-4 w-4" />,
+        icon: <Plus className="h-4 w-4" aria-hidden="true" />,
         category: 'Connections',
         action: () => openCreateForm(),
-        keywords: ['add', 'create', 'ssh']
+        keywords: ['add', 'create', 'ssh'],
+        shortcut: [MOD, 'N']
       },
       {
         id: 'view-terminal',
         label: 'Switch to Terminal',
-        icon: <Terminal className="h-4 w-4" />,
+        icon: <Terminal className="h-4 w-4" aria-hidden="true" />,
         category: 'Views',
         action: () => setActiveView('terminal'),
         keywords: ['tab', 'view']
@@ -94,7 +107,7 @@ export function CommandPalette() {
       {
         id: 'view-sftp',
         label: 'Switch to SFTP',
-        icon: <FolderOpen className="h-4 w-4" />,
+        icon: <FolderOpen className="h-4 w-4" aria-hidden="true" />,
         category: 'Views',
         action: () => setActiveView('sftp'),
         keywords: ['files', 'browse', 'view']
@@ -102,15 +115,21 @@ export function CommandPalette() {
       {
         id: 'toggle-sidebar',
         label: 'Toggle Sidebar',
-        icon: <PanelLeft className="h-4 w-4" />,
+        icon: <PanelLeft className="h-4 w-4" aria-hidden="true" />,
         category: 'Interface',
         action: toggleSidebar,
-        keywords: ['panel', 'hide', 'show']
+        keywords: ['panel', 'hide', 'show'],
+        shortcut: [MOD, 'B']
       },
       {
         id: 'toggle-theme',
         label: theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-        icon: theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />,
+        icon:
+          theme === 'dark' ? (
+            <Sun className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Moon className="h-4 w-4" aria-hidden="true" />
+          ),
         category: 'Interface',
         action: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
         keywords: ['theme', 'dark', 'light', 'mode']
@@ -142,19 +161,82 @@ export function CommandPalette() {
       {
         id: 'settings',
         label: 'Open Settings',
-        icon: <Settings className="h-4 w-4" />,
+        icon: <Settings className="h-4 w-4" aria-hidden="true" />,
         category: 'Interface',
         action: () => setSettingsOpen(true),
-        keywords: ['preferences', 'config']
+        keywords: ['preferences', 'config'],
+        shortcut: [MOD, ',']
+      },
+      {
+        id: 'sftp-toggle-hidden',
+        label: showHiddenFiles ? 'Hide Hidden Files' : 'Show Hidden Files',
+        icon: showHiddenFiles ? (
+          <EyeOff className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <Eye className="h-4 w-4" aria-hidden="true" />
+        ),
+        category: 'SFTP',
+        action: () => {
+          setActiveView('sftp')
+          toggleHiddenFiles()
+        },
+        keywords: ['dotfiles', 'hidden']
+      },
+      {
+        id: 'sftp-refresh',
+        label: 'Refresh File Browser',
+        icon: <RefreshCw className="h-4 w-4" aria-hidden="true" />,
+        category: 'SFTP',
+        action: () => {
+          setActiveView('sftp')
+          // FilePane re-fetches via useSftp hook keyed by path; nudge by re-setting same path
+          const { remotePath, setRemotePath, localPath, setLocalPath } = useSftpStore.getState()
+          setRemotePath(remotePath)
+          setLocalPath(localPath)
+        },
+        keywords: ['reload', 'sftp']
       }
     ]
+
+    if (activeTabId && tabOrder.length > 0) {
+      const idx = tabOrder.indexOf(activeTabId)
+      const next = tabOrder[(idx + 1) % tabOrder.length]
+      const prev = tabOrder[(idx - 1 + tabOrder.length) % tabOrder.length]
+      cmds.push(
+        {
+          id: 'terminal-close-tab',
+          label: 'Close Active Terminal Tab',
+          icon: <X className="h-4 w-4" aria-hidden="true" />,
+          category: 'Terminal',
+          action: () => closeTab(activeTabId),
+          keywords: ['close', 'tab', 'kill'],
+          shortcut: [MOD, 'W']
+        },
+        {
+          id: 'terminal-next-tab',
+          label: 'Next Terminal Tab',
+          icon: <ChevronRight className="h-4 w-4" aria-hidden="true" />,
+          category: 'Terminal',
+          action: () => setActiveTab(next),
+          shortcut: [MOD, '⇧', ']']
+        },
+        {
+          id: 'terminal-prev-tab',
+          label: 'Previous Terminal Tab',
+          icon: <ChevronLeft className="h-4 w-4" aria-hidden="true" />,
+          category: 'Terminal',
+          action: () => setActiveTab(prev),
+          shortcut: [MOD, '⇧', '[']
+        }
+      )
+    }
 
     for (const conn of connections) {
       cmds.push({
         id: `connect-${conn.id}`,
         label: `Connect: ${conn.name}`,
         description: `${conn.username}@${conn.host}:${conn.port}`,
-        icon: <Server className="h-4 w-4" />,
+        icon: <Server className="h-4 w-4" aria-hidden="true" />,
         category: 'Connections',
         action: () => {
           setActiveView('terminal')
@@ -173,7 +255,13 @@ export function CommandPalette() {
     toggleSidebar,
     setTheme,
     setSettingsOpen,
-    setTerminalTheme
+    setTerminalTheme,
+    toggleHiddenFiles,
+    showHiddenFiles,
+    activeTabId,
+    tabOrder,
+    setActiveTab,
+    closeTab
   ])
 
   const filtered = useMemo(() => {
@@ -314,6 +402,18 @@ export function CommandPalette() {
                                 </div>
                               )}
                             </div>
+                            {cmd.shortcut && (
+                              <div className="flex flex-shrink-0 items-center gap-0.5">
+                                {cmd.shortcut.map((key) => (
+                                  <kbd
+                                    key={key}
+                                    className="rounded border border-border/60 bg-muted/50 px-1 py-px font-mono text-[10px] text-muted-foreground"
+                                  >
+                                    {key}
+                                  </kbd>
+                                ))}
+                              </div>
+                            )}
                           </button>
                         )
                       })}

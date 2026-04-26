@@ -118,20 +118,24 @@ export function Sidebar() {
               title="New connection"
               aria-label="New connection"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
 
           {/* Search */}
-          {connectionList.length > 5 && (
+          {connectionList.length > 0 && (
             <div className="px-2 pb-1.5">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/50" />
+                <Search
+                  className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/50"
+                  aria-hidden="true"
+                />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter connections..."
+                  aria-label="Filter connections"
                   className="form-input !py-1 !pl-7 !pr-7 !text-xs"
                 />
                 {searchQuery && (
@@ -140,7 +144,7 @@ export function Sidebar() {
                     className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground/50 hover:text-foreground"
                     aria-label="Clear search"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3 w-3" aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -257,6 +261,7 @@ function FolderGroup({
 }) {
   const [open, setOpen] = useState(true)
   const isDefault = name === 'default'
+  const groupId = `folder-group-${name}`
 
   if (isDefault) {
     return (
@@ -272,17 +277,20 @@ function FolderGroup({
     <div>
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={groupId}
         className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground/70 hover:text-muted-foreground hover:bg-sidebar-accent/40 cursor-pointer"
       >
         <ChevronDown
+          aria-hidden="true"
           className={cn('h-3 w-3 transition-transform duration-150', !open && '-rotate-90')}
         />
-        <FolderClosed className="h-3 w-3" />
+        <FolderClosed className="h-3 w-3" aria-hidden="true" />
         <span className="truncate">{name}</span>
         <span className="ml-auto text-[10px] text-muted-foreground/50">{connections.length}</span>
       </button>
       {open && (
-        <div className="ml-2 space-y-0.5 border-l border-border/40 pl-1">
+        <div id={groupId} className="ml-2 space-y-0.5 border-l border-border/40 pl-1">
           {connections.map((conn) => (
             <ConnectionItem key={conn.id} connection={conn} />
           ))}
@@ -357,11 +365,14 @@ const ConnectionItem = memo(function ConnectionItem({
     }
   ]
 
+  const statusLabel = isConnected ? 'connected' : isConnecting ? 'connecting' : 'disconnected'
+
   return (
     <>
       <ContextMenu items={contextMenuItems}>
         <button
           onClick={handleConnect}
+          aria-label={`${connection.name} (${connection.username}@${connection.host}) — ${statusLabel}`}
           className={cn(
             'group flex w-full items-center gap-2.5 rounded-lg px-2.5 text-left',
             compact ? 'py-[7px]' : 'py-2',
@@ -371,7 +382,7 @@ const ConnectionItem = memo(function ConnectionItem({
           )}
         >
           {/* Status dot */}
-          <div className="relative flex-shrink-0">
+          <div className="relative flex-shrink-0" aria-hidden="true">
             <div
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: connection.colorTag || '#22c55e' }}
@@ -383,6 +394,9 @@ const ConnectionItem = memo(function ConnectionItem({
               <Loader2 className="absolute -right-1 -top-1 h-3 w-3 text-amber-500 animate-spin" />
             )}
           </div>
+          <span className="sr-only" aria-live="polite">
+            {statusLabel}
+          </span>
 
           <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-medium text-sidebar-foreground">
@@ -395,7 +409,10 @@ const ConnectionItem = memo(function ConnectionItem({
             )}
           </div>
 
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 flex-shrink-0 transition-colors" />
+          <ChevronRight
+            aria-hidden="true"
+            className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 flex-shrink-0 transition-colors"
+          />
         </button>
       </ContextMenu>
 

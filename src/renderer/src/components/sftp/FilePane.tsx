@@ -1,5 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
-import { ChevronRight, Home, RefreshCw, ArrowUp, Eye, EyeOff, FolderPlus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ChevronRight,
+  Home,
+  RefreshCw,
+  ArrowUp,
+  Eye,
+  EyeOff,
+  FolderPlus,
+  Search,
+  X
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FileList } from './FileList'
 import type { FileEntry } from '@shared/types/sftp'
@@ -68,11 +78,27 @@ export function FilePane({
 }: FilePaneProps) {
   const breadcrumbs = splitBreadcrumbs(path)
   const [dragOver, setDragOver] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filterQuery, setFilterQuery] = useState('')
+  const [prevPath, setPrevPath] = useState(path)
+  const filterInputRef = useRef<HTMLInputElement>(null)
 
-  const visibleEntries = useMemo(
-    () => (showHidden ? entries : entries.filter((e) => !e.name.startsWith('.'))),
-    [entries, showHidden]
-  )
+  if (prevPath !== path) {
+    setPrevPath(path)
+    if (filterQuery) setFilterQuery('')
+    if (filterOpen) setFilterOpen(false)
+  }
+
+  useEffect(() => {
+    if (filterOpen) filterInputRef.current?.focus()
+  }, [filterOpen])
+
+  const visibleEntries = useMemo(() => {
+    let list = showHidden ? entries : entries.filter((e) => !e.name.startsWith('.'))
+    const q = filterQuery.trim().toLowerCase()
+    if (q) list = list.filter((e) => e.name.toLowerCase().includes(q))
+    return list
+  }, [entries, showHidden, filterQuery])
 
   const navigateUp = useCallback(() => {
     const parent = path.split('/').slice(0, -1).join('/') || '/'
@@ -108,6 +134,19 @@ export function FilePane({
     [onDrop]
   )
 
+  const handlePaneKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setFilterOpen(true)
+      } else if (e.key === 'Escape' && filterOpen) {
+        setFilterOpen(false)
+        setFilterQuery('')
+      }
+    },
+    [filterOpen, setFilterOpen, setFilterQuery]
+  )
+
   return (
     <div
       className={cn(
@@ -117,6 +156,7 @@ export function FilePane({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onKeyDown={handlePaneKeyDown}
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-2.5 py-1.5 no-select">
@@ -139,7 +179,7 @@ export function FilePane({
               title="New folder"
               aria-label="New folder"
             >
-              <FolderPlus className="h-3.5 w-3.5" />
+              <FolderPlus className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
           {onToggleHidden && (
@@ -149,11 +189,24 @@ export function FilePane({
               title={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
               aria-label={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
             >
-              {showHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {showHidden ? (
+                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
             </button>
           )}
+          <button
+            onClick={() => setFilterOpen((o) => !o)}
+            className={cn('btn-icon !p-1', filterOpen && 'text-foreground bg-accent')}
+            title="Filter (⌘F)"
+            aria-label="Filter files"
+            aria-pressed={filterOpen}
+          >
+            <Search className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
           <button onClick={navigateUp} className="btn-icon !p-1" title="Go up" aria-label="Go up">
-            <ArrowUp className="h-3.5 w-3.5" />
+            <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
           <button
             onClick={onRefresh}
@@ -161,7 +214,10 @@ export function FilePane({
             title="Refresh"
             aria-label="Refresh"
           >
-            <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+            <RefreshCw
+              className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -189,20 +245,62 @@ export function FilePane({
         ))}
       </div>
 
+      {/* Filter */}
+      {filterOpen && (
+        <div className="border-b border-border/60 bg-muted/10 px-2 py-1.5">
+          <div className="relative">
+            <Search
+              className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/50"
+              aria-hidden="true"
+            />
+            <input
+              ref={filterInputRef}
+              type="text"
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder="Filter files..."
+              aria-label="Filter files in current directory"
+              className="form-input !py-1 !pl-7 !pr-7 !text-xs"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setFilterOpen(false)
+                  setFilterQuery('')
+                }
+              }}
+            />
+            {filterQuery && (
+              <button
+                onClick={() => setFilterQuery('')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground/50 hover:text-foreground"
+                aria-label="Clear filter"
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* File List */}
       <div className="flex-1 overflow-hidden">
         {error ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-            <span className="text-xs text-destructive">
+          <div
+            role="alert"
+            aria-live="polite"
+            className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center"
+          >
+            <span className="text-xs font-medium text-destructive">
               {error.message || 'Failed to load directory'}
             </span>
             <button
               onClick={onRefresh}
-              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer underline"
             >
               Try again
             </button>
           </div>
+        ) : isLoading && entries.length === 0 ? (
+          <FilePaneSkeleton showPermissions={side === 'remote'} />
         ) : (
           <FileList
             entries={visibleEntries}
@@ -216,10 +314,50 @@ export function FilePane({
             onPreview={onPreview}
             showPermissions={side === 'remote'}
             onSelectAll={onSelectAll}
-            emptyMessage={isLoading ? 'Loading...' : 'Empty directory'}
+            emptyMessage={filterQuery ? `No files match "${filterQuery}"` : 'Empty directory'}
           />
         )}
       </div>
+    </div>
+  )
+}
+
+function FilePaneSkeleton({ showPermissions }: { showPermissions: boolean }) {
+  return (
+    <div
+      className="flex h-full flex-col"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading directory"
+    >
+      <div className="flex items-center border-b border-border/60 bg-muted/20 text-[11px] font-medium text-muted-foreground/60 no-select">
+        <div className="flex flex-1 items-center px-3 py-1.5">Name</div>
+        <div className="w-20 px-2 py-1.5 text-right">Size</div>
+        {showPermissions && <div className="w-[84px] px-2 py-1.5 text-right">Perms</div>}
+        <div className="w-36 px-3 py-1.5 text-right">Modified</div>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div key={i} className="flex h-8 items-center border-b border-transparent">
+            <div className="flex flex-1 items-center gap-2 px-3">
+              <div className="skeleton h-4 w-4 rounded-sm" />
+              <div className="skeleton h-3" style={{ width: `${40 + ((i * 13) % 40)}%` }} />
+            </div>
+            <div className="w-20 px-2 text-right">
+              <div className="skeleton ml-auto h-3 w-10" />
+            </div>
+            {showPermissions && (
+              <div className="w-[84px] px-2 text-right">
+                <div className="skeleton ml-auto h-3 w-14" />
+              </div>
+            )}
+            <div className="w-36 px-3 text-right">
+              <div className="skeleton ml-auto h-3 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">Loading directory contents…</span>
     </div>
   )
 }

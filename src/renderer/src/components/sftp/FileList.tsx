@@ -39,13 +39,13 @@ interface FileListProps {
 }
 
 function getFileIcon(entry: FileEntry) {
-  if (entry.isDirectory) return <Folder className="h-4 w-4 text-blue-400" />
-  if (entry.isSymlink) return <Link2 className="h-4 w-4 text-cyan-400" />
+  if (entry.isDirectory) return <Folder className="h-4 w-4 text-info" aria-hidden="true" />
+  if (entry.isSymlink) return <Link2 className="h-4 w-4 text-cyan-500" aria-hidden="true" />
 
   const ext = entry.name.split('.').pop()?.toLowerCase()
 
   if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext || ''))
-    return <FileImage className="h-4 w-4 text-pink-400" />
+    return <FileImage className="h-4 w-4 text-pink-500" aria-hidden="true" />
   if (
     [
       'js',
@@ -64,9 +64,9 @@ function getFileIcon(entry: FileEntry) {
       'bash'
     ].includes(ext || '')
   )
-    return <FileCode className="h-4 w-4 text-green-400" />
+    return <FileCode className="h-4 w-4 text-success" aria-hidden="true" />
   if (['zip', 'tar', 'gz', 'bz2', 'xz', '7z', 'rar'].includes(ext || ''))
-    return <FileArchive className="h-4 w-4 text-yellow-400" />
+    return <FileArchive className="h-4 w-4 text-warning" aria-hidden="true" />
   if (
     [
       'md',
@@ -83,9 +83,9 @@ function getFileIcon(entry: FileEntry) {
       'conf'
     ].includes(ext || '')
   )
-    return <FileText className="h-4 w-4 text-muted-foreground" />
+    return <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 
-  return <File className="h-4 w-4 text-muted-foreground" />
+  return <File className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 }
 
 function formatSize(bytes: number): string {
@@ -316,8 +316,9 @@ export function FileList({
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`
                 }}
+                aria-selected={selection.has(entry.name)}
                 className={cn(
-                  'group flex items-center text-xs cursor-pointer border-b border-transparent outline-none',
+                  'group flex items-center text-xs cursor-pointer border-b border-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                   selection.has(entry.name)
                     ? 'bg-accent/80 border-b-border/30'
                     : 'hover:bg-accent/30',
