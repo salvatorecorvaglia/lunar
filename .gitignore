@@ -91,3 +91,9 @@ credentials.dat
 
 # Coverage
 coverage
+
+# Husky internal
+.husky/_
+
+# SBOM artifacts
+sbom.cyclonedx.json
