@@ -8,6 +8,7 @@ interface TransferState {
   addTransfer: (transfer: TransferItem) => void
   updateProgress: (transferId: string, transferred: number, bytesPerSec: number) => void
   completeTransfer: (transferId: string) => void
+  cancelTransfer: (transferId: string) => void
   errorTransfer: (transferId: string, error: string) => void
   removeTransfer: (transferId: string) => void
   clearCompleted: () => void
@@ -51,6 +52,16 @@ export const useTransferStore = create<TransferState>((set) => ({
       return { transfers }
     }),
 
+  cancelTransfer: (transferId) =>
+    set((s) => {
+      const transfers = new Map(s.transfers)
+      const item = transfers.get(transferId)
+      if (item) {
+        transfers.set(transferId, { ...item, status: 'cancelled', bytesPerSec: 0 })
+      }
+      return { transfers }
+    }),
+
   errorTransfer: (transferId, error) =>
     set((s) => {
       const transfers = new Map(s.transfers)
@@ -72,7 +83,7 @@ export const useTransferStore = create<TransferState>((set) => ({
     set((s) => {
       const transfers = new Map(s.transfers)
       for (const [id, item] of transfers) {
-        if (item.status === 'completed' || item.status === 'error') {
+        if (item.status === 'completed' || item.status === 'error' || item.status === 'cancelled') {
           transfers.delete(id)
         }
       }

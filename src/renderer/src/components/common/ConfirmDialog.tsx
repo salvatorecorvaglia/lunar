@@ -101,6 +101,10 @@ export function ConfirmDialog({
           >
             <div
               ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-dialog-title"
+              aria-describedby="confirm-dialog-message"
               className="w-full max-w-sm rounded-xl border border-border/80 bg-card p-5 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
@@ -111,8 +115,15 @@ export function ConfirmDialog({
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{message}</p>
+                  <h3 id="confirm-dialog-title" className="text-sm font-semibold text-foreground">
+                    {title}
+                  </h3>
+                  <p
+                    id="confirm-dialog-message"
+                    className="mt-1 text-xs text-muted-foreground leading-relaxed"
+                  >
+                    {message}
+                  </p>
                 </div>
               </div>
               <div className="mt-4 flex justify-end gap-2">

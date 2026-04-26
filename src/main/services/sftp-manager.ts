@@ -1,25 +1,41 @@
 import type { SFTPWrapper } from 'ssh2'
+import { createWriteStream, createReadStream } from 'fs'
+import { unlink, stat as fsStat } from 'fs/promises'
 import { sshManager } from './ssh-manager'
 import type { SftpEntry } from '@shared/types/sftp'
 import { transferQueue } from './transfer-queue'
+import { LIMITS } from '@shared/constants'
+import { withTimeout, TimeoutError } from '../lib/with-timeout'
 import log from '../lib/logger'
 
 type StepCallback = (transferred: number, chunk: number, total: number) => void
 
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
-const IDLE_CHECK_INTERVAL_MS = 60 * 1000 // Check every 60 seconds
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000
+const IDLE_CHECK_INTERVAL_MS = 60 * 1000
+
+/** Errors that indicate the SFTP session is unusable and must be re-opened. */
+function isSessionFatal(err: unknown): boolean {
+  if (err instanceof TimeoutError) return true
+  if (!(err instanceof Error)) return false
+  const msg = err.message.toLowerCase()
+  return (
+    msg.includes('channel') ||
+    msg.includes('connection') ||
+    msg.includes('closed') ||
+    msg.includes('not connected')
+  )
+}
 
 class SftpManager {
   private sftpSessions = new Map<string, SFTPWrapper>()
   private lastAccess = new Map<string, number>()
+
   constructor() {
-    // Clear stale SFTP cache when the underlying SSH session disconnects/reconnects
     sshManager.onSessionDisconnect((sessionId) => {
       this.sftpSessions.delete(sessionId)
       this.lastAccess.delete(sessionId)
     })
 
-    // Start idle cleanup timer
     setInterval(() => this.cleanupIdle(), IDLE_CHECK_INTERVAL_MS)
   }
 
@@ -57,72 +73,84 @@ class SftpManager {
     })
   }
 
-  async list(sessionId: string, remotePath: string): Promise<SftpEntry[]> {
+  /** Run an SFTP operation with timeout + auto-invalidate the session on fatal errors. */
+  private async runOp<T>(
+    sessionId: string,
+    op: string,
+    fn: (sftp: SFTPWrapper) => Promise<T>,
+    timeoutMs: number = LIMITS.SFTP_OP_TIMEOUT_MS
+  ): Promise<T> {
     const sftp = await this.getSftp(sessionId)
+    try {
+      return await withTimeout(fn(sftp), timeoutMs, `sftp:${op}`)
+    } catch (err) {
+      if (isSessionFatal(err)) {
+        log.warn(`[SFTP] Invalidating session ${sessionId} after ${op} failure: ${String(err)}`)
+        this.closeSftp(sessionId)
+      }
+      throw err
+    }
+  }
 
-    return new Promise((resolve, reject) => {
-      sftp.readdir(remotePath, (err, list) => {
-        if (err) return reject(err)
-
-        const entries: SftpEntry[] = list.map((item) => {
-          const fileType = item.attrs.mode & 0o170000
-          const isDir = fileType === 0o40000
-          const isLink = fileType === 0o120000
-          const perms = this.formatPermissions(item.attrs.mode)
-
-          return {
-            name: item.filename,
-            path: remotePath === '/' ? `/${item.filename}` : `${remotePath}/${item.filename}`,
-            size: item.attrs.size,
-            modifiedAt: item.attrs.mtime,
-            isDirectory: isDir,
-            isSymlink: isLink,
-            permissions: perms,
-            owner: item.attrs.uid,
-            group: item.attrs.gid
-          }
+  async list(sessionId: string, remotePath: string): Promise<SftpEntry[]> {
+    return this.runOp(sessionId, 'list', (sftp) => {
+      return new Promise<SftpEntry[]>((resolve, reject) => {
+        sftp.readdir(remotePath, (err, list) => {
+          if (err) return reject(err)
+          const entries: SftpEntry[] = list.map((item) => {
+            const fileType = item.attrs.mode & 0o170000
+            const isDir = fileType === 0o40000
+            const isLink = fileType === 0o120000
+            return {
+              name: item.filename,
+              path: remotePath === '/' ? `/${item.filename}` : `${remotePath}/${item.filename}`,
+              size: item.attrs.size,
+              modifiedAt: item.attrs.mtime,
+              isDirectory: isDir,
+              isSymlink: isLink,
+              permissions: this.formatPermissions(item.attrs.mode),
+              owner: item.attrs.uid,
+              group: item.attrs.gid
+            }
+          })
+          resolve(entries)
         })
-
-        resolve(entries)
       })
     })
   }
 
   async mkdir(sessionId: string, remotePath: string): Promise<void> {
-    const sftp = await this.getSftp(sessionId)
-    return new Promise((resolve, reject) => {
-      sftp.mkdir(remotePath, (err) => {
-        if (err) return reject(err)
-        resolve()
+    return this.runOp(sessionId, 'mkdir', (sftp) => {
+      return new Promise<void>((resolve, reject) => {
+        sftp.mkdir(remotePath, (err) => (err ? reject(err) : resolve()))
       })
     })
   }
 
   async rename(sessionId: string, oldPath: string, newPath: string): Promise<void> {
-    const sftp = await this.getSftp(sessionId)
-    return new Promise((resolve, reject) => {
-      sftp.rename(oldPath, newPath, (err) => {
-        if (err) return reject(err)
-        resolve()
+    return this.runOp(sessionId, 'rename', (sftp) => {
+      return new Promise<void>((resolve, reject) => {
+        sftp.rename(oldPath, newPath, (err) => (err ? reject(err) : resolve()))
       })
     })
   }
 
   async remove(sessionId: string, remotePath: string, isDirectory: boolean): Promise<void> {
-    const sftp = await this.getSftp(sessionId)
     if (isDirectory) {
-      await this.removeDir(sftp, remotePath)
-    } else {
-      return new Promise((resolve, reject) => {
-        sftp.unlink(remotePath, (err) => {
-          if (err) return reject(err)
-          resolve()
-        })
-      })
+      return this.runOp(
+        sessionId,
+        'rmdir',
+        (sftp) => this.removeDir(sftp, remotePath),
+        LIMITS.SFTP_OP_TIMEOUT_MS * 4 // recursive ops can be slow
+      )
     }
+    return this.runOp(sessionId, 'unlink', (sftp) => {
+      return new Promise<void>((resolve, reject) => {
+        sftp.unlink(remotePath, (err) => (err ? reject(err) : resolve()))
+      })
+    })
   }
 
-  /** Recursively remove a directory and all its contents. */
   private async removeDir(sftp: SFTPWrapper, dirPath: string): Promise<void> {
     const entries = await new Promise<{ filename: string; attrs: { mode: number } }[]>(
       (resolve, reject) => {
@@ -142,139 +170,212 @@ class SftpManager {
         await this.removeDir(sftp, fullPath)
       } else {
         await new Promise<void>((resolve, reject) => {
-          sftp.unlink(fullPath, (err) => {
-            if (err) return reject(err)
-            resolve()
-          })
+          sftp.unlink(fullPath, (err) => (err ? reject(err) : resolve()))
         })
       }
     }
 
     await new Promise<void>((resolve, reject) => {
-      sftp.rmdir(dirPath, (err) => {
-        if (err) return reject(err)
-        resolve()
-      })
+      sftp.rmdir(dirPath, (err) => (err ? reject(err) : resolve()))
     })
   }
 
   async readFile(sessionId: string, remotePath: string, maxSize?: number): Promise<string> {
-    const sftp = await this.getSftp(sessionId)
-    const limit = maxSize || 5 * 1024 * 1024
+    const limit = Math.min(maxSize || LIMITS.MAX_PREVIEW_BYTES, LIMITS.MAX_PREVIEW_BYTES)
+    return this.runOp(sessionId, 'readFile', (sftp) => {
+      return new Promise<string>((resolve, reject) => {
+        sftp.stat(remotePath, (err, stats) => {
+          if (err) return reject(err)
+          if (stats.size > limit) {
+            return reject(
+              new Error(
+                `File too large to preview: ${stats.size} bytes (max ${limit}). Download it instead.`
+              )
+            )
+          }
 
-    return new Promise((resolve, reject) => {
-      sftp.stat(remotePath, (err, stats) => {
-        if (err) return reject(err)
-        if (stats.size > limit) {
-          return reject(new Error(`File too large: ${stats.size} bytes (max: ${limit})`))
-        }
-
-        const chunks: Buffer[] = []
-        const stream = sftp.createReadStream(remotePath)
-
-        stream.on('data', (chunk: Buffer) => chunks.push(chunk))
-        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
-        stream.on('error', (err: Error) => {
-          stream.destroy()
-          reject(err)
+          const chunks: Buffer[] = []
+          const stream = sftp.createReadStream(remotePath)
+          stream.on('data', (chunk: Buffer) => chunks.push(chunk))
+          stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
+          stream.on('error', (err: Error) => {
+            stream.destroy()
+            reject(err)
+          })
         })
       })
     })
   }
 
-  /** Get remote file size. Used by transfer-queue to report progress totals. */
   async statSize(sessionId: string, remotePath: string): Promise<number> {
-    const sftp = await this.getSftp(sessionId)
-    return new Promise((resolve, reject) => {
-      sftp.stat(remotePath, (err, stats) => {
-        if (err) return reject(err)
-        resolve(stats.size)
+    return this.runOp(sessionId, 'stat', (sftp) => {
+      return new Promise<number>((resolve, reject) => {
+        sftp.stat(remotePath, (err, stats) => (err ? reject(err) : resolve(stats.size)))
       })
     })
   }
 
-  async stat(
-    sessionId: string,
-    remotePath: string
-  ): Promise<{
-    size: number
-    mode: number
-    modifiedAt: number
-    uid: number
-    gid: number
-    isDirectory: boolean
-    isSymlink: boolean
-    permissions: string
-  }> {
-    const sftp = await this.getSftp(sessionId)
-    return new Promise((resolve, reject) => {
-      sftp.stat(remotePath, (err, stats) => {
-        if (err) return reject(err)
-        const fileType = stats.mode & 0o170000
-        resolve({
-          size: stats.size,
-          mode: stats.mode,
-          modifiedAt: stats.mtime,
-          uid: stats.uid,
-          gid: stats.gid,
-          isDirectory: fileType === 0o040000,
-          isSymlink: fileType === 0o120000,
-          permissions: this.formatPermissions(stats.mode)
+  async stat(sessionId: string, remotePath: string) {
+    return this.runOp(sessionId, 'stat', (sftp) => {
+      return new Promise<{
+        size: number
+        mode: number
+        modifiedAt: number
+        uid: number
+        gid: number
+        isDirectory: boolean
+        isSymlink: boolean
+        permissions: string
+      }>((resolve, reject) => {
+        sftp.stat(remotePath, (err, stats) => {
+          if (err) return reject(err)
+          const fileType = stats.mode & 0o170000
+          resolve({
+            size: stats.size,
+            mode: stats.mode,
+            modifiedAt: stats.mtime,
+            uid: stats.uid,
+            gid: stats.gid,
+            isDirectory: fileType === 0o040000,
+            isSymlink: fileType === 0o120000,
+            permissions: this.formatPermissions(stats.mode)
+          })
         })
       })
     })
   }
 
   /**
-   * Low-level download used by transfer-queue.
-   * Caller provides a step callback for progress tracking.
+   * Stream-based download with abort support.
+   * On abort, partial local file is removed.
    */
-  async fastDownload(
+  async streamDownload(
     sessionId: string,
     remotePath: string,
     localPath: string,
-    onStep: StepCallback
+    onStep: StepCallback,
+    signal: AbortSignal
   ): Promise<void> {
     const sftp = await this.getSftp(sessionId)
-    return new Promise((resolve, reject) => {
-      sftp.fastGet(remotePath, localPath, { step: onStep }, (err) => {
-        if (err) return reject(err)
+    let total = 0
+    try {
+      total = await new Promise<number>((resolve, reject) => {
+        sftp.stat(remotePath, (err, stats) => (err ? reject(err) : resolve(stats.size)))
+      })
+    } catch {
+      // size unknown — progress will lack a denominator
+    }
+
+    let transferred = 0
+    const readStream = sftp.createReadStream(remotePath)
+    const writeStream = createWriteStream(localPath)
+
+    const cleanupOnAbort = async (): Promise<void> => {
+      readStream.destroy()
+      writeStream.destroy()
+      await unlink(localPath).catch(() => undefined)
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const onAbort = (): void => {
+        cleanupOnAbort().finally(() => reject(new Error('Cancelled')))
+      }
+
+      if (signal.aborted) {
+        onAbort()
+        return
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+
+      readStream.on('data', (chunk: Buffer) => {
+        transferred += chunk.length
+        onStep(transferred, chunk.length, total)
+      })
+      readStream.on('error', (err: Error) => {
+        signal.removeEventListener('abort', onAbort)
+        cleanupOnAbort().finally(() => reject(err))
+      })
+      writeStream.on('error', (err: Error) => {
+        signal.removeEventListener('abort', onAbort)
+        cleanupOnAbort().finally(() => reject(err))
+      })
+      writeStream.on('finish', () => {
+        signal.removeEventListener('abort', onAbort)
         resolve()
       })
+
+      readStream.pipe(writeStream)
     })
   }
 
   /**
-   * Low-level upload used by transfer-queue.
-   * Caller provides a step callback for progress tracking.
+   * Stream-based upload with abort support.
+   * On abort, the partial remote file is removed.
    */
-  async fastUpload(
+  async streamUpload(
     sessionId: string,
     localPath: string,
     remotePath: string,
-    onStep: StepCallback
+    onStep: StepCallback,
+    signal: AbortSignal
   ): Promise<void> {
     const sftp = await this.getSftp(sessionId)
-    return new Promise((resolve, reject) => {
-      sftp.fastPut(localPath, remotePath, { step: onStep }, (err) => {
-        if (err) return reject(err)
+    let total = 0
+    try {
+      const stats = await fsStat(localPath)
+      total = stats.size
+    } catch {
+      // size unknown
+    }
+
+    let transferred = 0
+    const readStream = createReadStream(localPath)
+    const writeStream = sftp.createWriteStream(remotePath)
+
+    const cleanupOnAbort = async (): Promise<void> => {
+      readStream.destroy()
+      writeStream.destroy()
+      await new Promise<void>((resolve) => {
+        sftp.unlink(remotePath, () => resolve())
+      })
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const onAbort = (): void => {
+        cleanupOnAbort().finally(() => reject(new Error('Cancelled')))
+      }
+
+      if (signal.aborted) {
+        onAbort()
+        return
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+
+      readStream.on('data', (chunk: Buffer) => {
+        transferred += chunk.length
+        onStep(transferred, chunk.length, total)
+      })
+      readStream.on('error', (err: Error) => {
+        signal.removeEventListener('abort', onAbort)
+        cleanupOnAbort().finally(() => reject(err))
+      })
+      writeStream.on('error', (err: Error) => {
+        signal.removeEventListener('abort', onAbort)
+        cleanupOnAbort().finally(() => reject(err))
+      })
+      writeStream.on('close', () => {
+        signal.removeEventListener('abort', onAbort)
         resolve()
       })
+
+      readStream.pipe(writeStream)
     })
   }
 
-  /**
-   * Enqueue a download via the transfer queue (max N concurrent).
-   * Returns the transfer ID for tracking.
-   */
   async download(sessionId: string, remotePath: string, localPath: string): Promise<string> {
     return transferQueue.enqueue('download', sessionId, localPath, remotePath)
   }
 
-  /**
-   * Enqueue an upload via the transfer queue (max N concurrent).
-   * Returns the transfer ID for tracking.
-   */
   async upload(sessionId: string, localPath: string, remotePath: string): Promise<string> {
     return transferQueue.enqueue('upload', sessionId, localPath, remotePath)
   }
@@ -282,7 +383,11 @@ class SftpManager {
   closeSftp(sessionId: string): void {
     const sftp = this.sftpSessions.get(sessionId)
     if (sftp) {
-      sftp.end()
+      try {
+        sftp.end()
+      } catch {
+        // ignore close errors on an already-broken handle
+      }
       this.sftpSessions.delete(sessionId)
     }
     this.lastAccess.delete(sessionId)

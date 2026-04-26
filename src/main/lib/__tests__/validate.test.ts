@@ -1,0 +1,58 @@
+import { describe, it, expect } from 'vitest'
+import { assertNonEmptyString, assertBoundedInt, assertValidPath } from '../validate'
+
+describe('assertNonEmptyString', () => {
+  it('accepts a non-empty string', () => {
+    expect(() => assertNonEmptyString('hello', 'name')).not.toThrow()
+  })
+
+  it('rejects empty string', () => {
+    expect(() => assertNonEmptyString('', 'name')).toThrow(/non-empty string/)
+  })
+
+  it('rejects whitespace-only string', () => {
+    expect(() => assertNonEmptyString('   ', 'name')).toThrow(/non-empty string/)
+  })
+
+  it('rejects non-string values', () => {
+    expect(() => assertNonEmptyString(42, 'name')).toThrow(/non-empty string/)
+    expect(() => assertNonEmptyString(null, 'name')).toThrow(/non-empty string/)
+    expect(() => assertNonEmptyString(undefined, 'name')).toThrow(/non-empty string/)
+  })
+
+  it('rejects strings with null bytes', () => {
+    expect(() => assertNonEmptyString('hello\0world', 'name')).toThrow(/null bytes/)
+  })
+})
+
+describe('assertBoundedInt', () => {
+  it('accepts values within bounds', () => {
+    expect(() => assertBoundedInt(5, 'n', 1, 10)).not.toThrow()
+    expect(() => assertBoundedInt(1, 'n', 1, 10)).not.toThrow()
+    expect(() => assertBoundedInt(10, 'n', 1, 10)).not.toThrow()
+  })
+
+  it('rejects out-of-bound values', () => {
+    expect(() => assertBoundedInt(0, 'n', 1, 10)).toThrow(/integer between/)
+    expect(() => assertBoundedInt(11, 'n', 1, 10)).toThrow(/integer between/)
+  })
+
+  it('rejects non-integers', () => {
+    expect(() => assertBoundedInt(1.5, 'n', 1, 10)).toThrow(/integer between/)
+    expect(() => assertBoundedInt('5', 'n', 1, 10)).toThrow(/integer between/)
+  })
+})
+
+describe('assertValidPath', () => {
+  it('accepts valid paths', () => {
+    expect(() => assertValidPath('/home/user/file.txt', 'path')).not.toThrow()
+  })
+
+  it('rejects empty paths', () => {
+    expect(() => assertValidPath('', 'path')).toThrow()
+  })
+
+  it('rejects paths with null bytes', () => {
+    expect(() => assertValidPath('/home/\0/x', 'path')).toThrow(/null bytes/)
+  })
+})

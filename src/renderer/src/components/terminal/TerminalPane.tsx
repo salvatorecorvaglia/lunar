@@ -91,6 +91,7 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
       letterSpacing: 0,
       scrollback,
       allowProposedApi: true,
+      screenReaderMode: true,
       theme
     })
 

@@ -16,7 +16,8 @@ import {
   EyeOff,
   Loader2,
   Check,
-  FolderClosed
+  FolderClosed,
+  Wifi
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useConnectionStore } from '@/stores/connection-store'
@@ -89,6 +90,7 @@ export function ConnectionForm() {
   const [startupCommand, setStartupCommand] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [testing, setTesting] = useState(false)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const fieldId = useId()
@@ -237,6 +239,24 @@ export function ConnectionForm() {
     }
   }
 
+  async function handleTest() {
+    if (!isEditing || !editingConnectionId) {
+      toast.info('Save the connection first, then test it')
+      return
+    }
+    setTesting(true)
+    try {
+      const result = await window.api.ssh.testConnection({ connectionId: editingConnectionId })
+      if (result.ok) {
+        toast.success('Connection successful')
+      } else {
+        toast.error(result.error || 'Connection failed')
+      }
+    } finally {
+      setTesting(false)
+    }
+  }
+
   async function handleBrowseKey() {
     const path = await window.api.shell.openFileDialog({
       filters: [{ name: 'SSH Keys', extensions: ['pem', 'key', 'pub', ''] }]
@@ -270,6 +290,9 @@ export function ConnectionForm() {
           >
             <div
               ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="connection-form-title"
               className="w-full max-w-lg rounded-xl border border-border/80 bg-card shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
@@ -279,7 +302,10 @@ export function ConnectionForm() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                     <Server className="h-4 w-4 text-primary" />
                   </div>
-                  <h2 className="text-base font-semibold text-foreground">
+                  <h2
+                    id="connection-form-title"
+                    className="text-base font-semibold text-foreground"
+                  >
                     {isEditing
                       ? 'Edit Connection'
                       : duplicatingConnection
@@ -601,14 +627,33 @@ export function ConnectionForm() {
                 </FormField>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-2 pt-2">
-                  <button type="button" onClick={closeForm} className="btn-ghost">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={isSaving} className="btn-primary">
-                    {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    {isSaving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
-                  </button>
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  {isEditing ? (
+                    <button
+                      type="button"
+                      onClick={handleTest}
+                      disabled={testing}
+                      className="btn-ghost"
+                    >
+                      {testing ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Wifi className="h-3.5 w-3.5" />
+                      )}
+                      {testing ? 'Testing...' : 'Test connection'}
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={closeForm} className="btn-ghost">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isSaving} className="btn-primary">
+                      {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      {isSaving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>

@@ -69,6 +69,11 @@ const api = {
   // SSH sessions
   ssh: {
     connect: (params: SshConnectParams) => ipcRenderer.invoke(IPC.SSH_CONNECT, params),
+    testConnection: (params: { connectionId: string }) =>
+      ipcRenderer.invoke(IPC.SSH_TEST_CONNECTION, params) as Promise<{
+        ok: boolean
+        error?: string
+      }>,
     disconnect: (sessionId: string) => ipcRenderer.invoke(IPC.SSH_DISCONNECT, sessionId),
     sendData: (params: SshSendDataParams) => ipcRenderer.invoke(IPC.SSH_SEND_DATA, params),
     resize: (params: SshResizeParams) => ipcRenderer.invoke(IPC.SSH_RESIZE, params),
@@ -110,7 +115,8 @@ const api = {
     cancel: (transferId: string) => ipcRenderer.invoke(IPC.TRANSFER_CANCEL, transferId),
     onProgress: createEventListener<TransferProgressEvent>(IPC.TRANSFER_PROGRESS),
     onComplete: createEventListener<TransferCompleteEvent>(IPC.TRANSFER_COMPLETE),
-    onError: createEventListener<TransferErrorEvent>(IPC.TRANSFER_ERROR)
+    onError: createEventListener<TransferErrorEvent>(IPC.TRANSFER_ERROR),
+    onCancelled: createEventListener<TransferCompleteEvent>(IPC.TRANSFER_CANCELLED)
   },
 
   // Credentials
@@ -132,7 +138,9 @@ const api = {
   app: {
     getVersion: () => ipcRenderer.invoke(IPC.APP_GET_VERSION) as Promise<string>,
     checkUpdate: () => ipcRenderer.invoke(IPC.APP_CHECK_UPDATE),
-    installUpdate: () => ipcRenderer.invoke(IPC.APP_INSTALL_UPDATE)
+    installUpdate: () => ipcRenderer.invoke(IPC.APP_INSTALL_UPDATE),
+    getLogPath: () => ipcRenderer.invoke(IPC.APP_GET_LOG_PATH) as Promise<string>,
+    openLogFile: () => ipcRenderer.invoke(IPC.APP_OPEN_LOG_FILE)
   }
 }
 

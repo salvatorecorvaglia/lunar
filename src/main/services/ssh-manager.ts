@@ -341,6 +341,64 @@ class SshManager {
     this.sessions.delete(sessionId)
   }
 
+  /**
+   * Open a transient SSH connection using a saved connection's config, then close it.
+   * Used by the UI's "Test connection" button to surface auth/host errors before save.
+   */
+  async testConnection(connectionId: string): Promise<{ ok: boolean; error?: string }> {
+    const db = getDatabase()
+    const row = db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId) as
+      | ConnectionRow
+      | undefined
+    if (!row) return { ok: false, error: 'Connection not found' }
+
+    const credential = retrieveCredential(connectionId)
+    const config: ConnectConfig = {
+      host: row.host,
+      port: row.port,
+      username: row.username,
+      readyTimeout: getSetting('ssh.readyTimeout', 30000)
+    }
+
+    if (row.auth_type === 'password') {
+      config.password = credential || undefined
+    } else if (row.auth_type === 'key' || row.auth_type === 'key+passphrase') {
+      if (!row.private_key_path) return { ok: false, error: 'Private key path not configured' }
+      try {
+        const keyPath = row.private_key_path.replace(/^~/, process.env.HOME || '')
+        config.privateKey = await readFile(keyPath)
+        if (row.auth_type === 'key+passphrase' && credential) config.passphrase = credential
+      } catch (err: unknown) {
+        return {
+          ok: false,
+          error: `Failed to read key: ${err instanceof Error ? err.message : String(err)}`
+        }
+      }
+    }
+
+    return new Promise((resolve) => {
+      const client = new Client()
+      let settled = false
+      const finish = (result: { ok: boolean; error?: string }): void => {
+        if (settled) return
+        settled = true
+        try {
+          client.end()
+        } catch {
+          // ignore
+        }
+        resolve(result)
+      }
+      client.on('ready', () => finish({ ok: true }))
+      client.on('error', (err) => finish({ ok: false, error: err.message }))
+      try {
+        client.connect(config)
+      } catch (err: unknown) {
+        finish({ ok: false, error: err instanceof Error ? err.message : String(err) })
+      }
+    })
+  }
+
   getSession(sessionId: string): SshSession | undefined {
     return this.sessions.get(sessionId)
   }

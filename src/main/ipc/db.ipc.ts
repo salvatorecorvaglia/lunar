@@ -1,8 +1,9 @@
 import { ipcMain, dialog } from 'electron'
 import { readFile } from 'fs/promises'
 import { v4 as uuidv4 } from 'uuid'
-import { IPC } from '@shared/constants'
+import { IPC, LIMITS } from '@shared/constants'
 import { getDatabase, type ConnectionRow } from '../services/database'
+import { transferQueue } from '../services/transfer-queue'
 import type {
   Connection,
   CreateConnectionInput,
@@ -266,7 +267,16 @@ export function registerDbHandlers(): void {
   })
 
   ipcMain.handle(IPC.SETTINGS_SET, (_event, { key, value }: { key: string; value: string }) => {
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value)
+    let v = value
+    if (key === 'terminal.scrollback') {
+      const n = Math.max(1000, Math.min(LIMITS.MAX_SCROLLBACK, Number(value) || 10000))
+      v = String(n)
+    } else if (key === 'transfer.concurrency') {
+      const n = Math.max(1, Math.min(LIMITS.MAX_CONCURRENT_TRANSFERS, Number(value) || 3))
+      v = String(n)
+      transferQueue.setMaxConcurrent(n)
+    }
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, v)
   })
 
   ipcMain.handle(IPC.SETTINGS_GET_ALL, () => {

@@ -117,12 +117,23 @@ export function PromptDialog({
           >
             <div
               ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="prompt-dialog-title"
+              aria-describedby={message ? 'prompt-dialog-message' : undefined}
               className="w-full max-w-sm rounded-xl border border-border/80 bg-card p-5 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+              <h3 id="prompt-dialog-title" className="text-sm font-semibold text-foreground">
+                {title}
+              </h3>
               {message && (
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{message}</p>
+                <p
+                  id="prompt-dialog-message"
+                  className="mt-1 text-xs text-muted-foreground leading-relaxed"
+                >
+                  {message}
+                </p>
               )}
               <form onSubmit={handleSubmit}>
                 <input

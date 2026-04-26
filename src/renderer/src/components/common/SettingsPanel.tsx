@@ -10,7 +10,8 @@ import {
   Moon,
   Sun,
   Info,
-  Database
+  Database,
+  FileText
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -128,11 +129,16 @@ export function SettingsPanel() {
             animate="animate"
             exit="exit"
             ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-dialog-title"
             className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border/60 bg-card shadow-xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-              <h2 className="text-base font-semibold text-foreground">Settings</h2>
+              <h2 id="settings-dialog-title" className="text-base font-semibold text-foreground">
+                Settings
+              </h2>
               <button
                 onClick={() => setSettingsOpen(false)}
                 className="btn-icon"
@@ -329,6 +335,17 @@ export function SettingsPanel() {
                 </div>
                 <p className="text-[11px] text-muted-foreground/60">
                   Export and import connections (credentials are not included)
+                </p>
+              </Section>
+
+              {/* Logs */}
+              <Section title="Diagnostics" icon={<FileText className="h-4 w-4" />}>
+                <button onClick={() => window.api.app.openLogFile()} className="btn-outline w-full">
+                  <FileText className="h-3.5 w-3.5" />
+                  Open log file
+                </button>
+                <p className="text-[11px] text-muted-foreground/60">
+                  Open the application log folder to attach to bug reports
                 </p>
               </Section>
 

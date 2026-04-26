@@ -58,8 +58,28 @@ export const IPC = {
   APP_CHECK_UPDATE: 'app:check-update',
   APP_INSTALL_UPDATE: 'app:install-update',
   APP_GET_VERSION: 'app:get-version',
+  APP_GET_LOG_PATH: 'app:get-log-path',
+  APP_OPEN_LOG_FILE: 'app:open-log-file',
   WINDOW_MINIMIZE: 'window:minimize',
   WINDOW_MAXIMIZE: 'window:maximize',
   WINDOW_CLOSE: 'window:close',
-  WINDOW_IS_MAXIMIZED: 'window:is-maximized'
+  WINDOW_IS_MAXIMIZED: 'window:is-maximized',
+
+  // Transfers (additional)
+  TRANSFER_CANCELLED: 'transfer:cancelled',
+
+  // SSH (additional)
+  SSH_TEST_CONNECTION: 'ssh:test-connection'
+} as const
+
+/** Resource limits — centralised so renderer + main agree. */
+export const LIMITS = {
+  /** Maximum file preview size (bytes). Larger files are refused at the SFTP layer. */
+  MAX_PREVIEW_BYTES: 2 * 1024 * 1024,
+  /** Hard cap on terminal scrollback lines (settings UI clamps to this). */
+  MAX_SCROLLBACK: 100_000,
+  /** Hard cap on concurrent SFTP transfers. */
+  MAX_CONCURRENT_TRANSFERS: 10,
+  /** Per-op SFTP timeout (ms). list/stat/mkdir/rename/delete/read all use this. */
+  SFTP_OP_TIMEOUT_MS: 30_000
 } as const
