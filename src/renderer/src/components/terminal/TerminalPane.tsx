@@ -147,8 +147,7 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
       let out = ''
       for (let i = 0; i < s.length; i++) {
         const code = s.charCodeAt(i)
-        const printable =
-          code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127)
+        const printable = code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127)
         out += printable ? s[i] : '?'
       }
       return out

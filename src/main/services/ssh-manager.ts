@@ -223,7 +223,10 @@ class SshManager {
       this.sessions.delete(sessionId)
       const isTimeout = err instanceof TimeoutError
       const message = err instanceof Error ? err.message : String(err)
-      return { success: false, error: isTimeout ? `Connection timed out after ${timeoutMs}ms` : message }
+      return {
+        success: false,
+        error: isTimeout ? `Connection timed out after ${timeoutMs}ms` : message
+      }
     }
   }
 
@@ -407,7 +410,11 @@ class SshManager {
         resolve(result)
       }
       const timer = setTimeout(
-        () => finish({ ok: false, error: `Connection test timed out after ${LIMITS.SSH_CONNECT_TIMEOUT_MS}ms` }),
+        () =>
+          finish({
+            ok: false,
+            error: `Connection test timed out after ${LIMITS.SSH_CONNECT_TIMEOUT_MS}ms`
+          }),
         LIMITS.SSH_CONNECT_TIMEOUT_MS
       )
       client.on('ready', () => {
