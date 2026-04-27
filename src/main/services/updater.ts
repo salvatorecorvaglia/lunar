@@ -36,12 +36,16 @@ export function initAutoUpdater(): void {
 
   // Check for updates after a short delay
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(() => {})
+    autoUpdater.checkForUpdates().catch((err) => {
+      log.warn('[Updater] Initial check failed:', err?.message ?? err)
+    })
   }, 5000)
 }
 
 export function checkForUpdate(): { available: boolean; version?: string } {
-  autoUpdater.checkForUpdates().catch(() => {})
+  autoUpdater.checkForUpdates().catch((err) => {
+    log.warn('[Updater] Manual check failed:', err?.message ?? err)
+  })
   return { available: updateAvailable, version: updateVersion || undefined }
 }
 

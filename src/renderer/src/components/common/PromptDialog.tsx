@@ -45,11 +45,14 @@ export function PromptDialog({
   const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Reset value when dialog opens
+  // Reset value when dialog opens. Setting state in an effect is intentional
+  // here: the dialog mounts with a stale `defaultValue` and we want to refresh
+  // it whenever it transitions to open. The alternative (lifting state) leaks
+  // dialog concerns to every caller.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValue(defaultValue)
-      // Focus input after animation
       requestAnimationFrame(() => {
         inputRef.current?.focus()
         inputRef.current?.select()

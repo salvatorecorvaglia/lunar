@@ -10,7 +10,10 @@ import { useInvalidateSftp, useInvalidateLocalDir } from '@/hooks/use-sftp'
  * Mount this once at the app level so events are always captured.
  */
 export function useTransferEventListener(): void {
-  const { updateProgress, completeTransfer, errorTransfer, cancelTransfer } = useTransferStore()
+  const updateProgress = useTransferStore((s) => s.updateProgress)
+  const completeTransfer = useTransferStore((s) => s.completeTransfer)
+  const errorTransfer = useTransferStore((s) => s.errorTransfer)
+  const cancelTransfer = useTransferStore((s) => s.cancelTransfer)
   const invalidateSftp = useInvalidateSftp()
   const invalidateLocal = useInvalidateLocalDir()
 
@@ -43,7 +46,10 @@ export function useTransferEventListener(): void {
       invalidateLocal(undefined)
     })
 
+    let disposed = false
     return () => {
+      if (disposed) return
+      disposed = true
       cleanupProgress()
       cleanupComplete()
       cleanupError()

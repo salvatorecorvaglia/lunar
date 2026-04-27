@@ -4,8 +4,10 @@ import { useTerminalStore } from '@/stores/terminal-store'
 import { useTransferStore } from '@/stores/transfer-store'
 
 export function StatusBar() {
-  const { sessions, activeTabId } = useTerminalStore()
-  const { transfers, toggleQueueExpanded } = useTransferStore()
+  const sessions = useTerminalStore((s) => s.sessions)
+  const activeTabId = useTerminalStore((s) => s.activeTabId)
+  const transfers = useTransferStore((s) => s.transfers)
+  const toggleQueueExpanded = useTransferStore((s) => s.toggleQueueExpanded)
 
   const activeSession = activeTabId ? sessions.get(activeTabId) : null
   const activeSessions = Array.from(sessions.values()).filter(

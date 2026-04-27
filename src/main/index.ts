@@ -33,7 +33,7 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: true
     }
   })
 
@@ -42,7 +42,16 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    try {
+      const parsed = new URL(details.url)
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        shell.openExternal(details.url)
+      } else {
+        log.warn('[Main] Blocked openExternal for non-http(s) URL:', details.url)
+      }
+    } catch {
+      log.warn('[Main] Blocked openExternal for invalid URL:', details.url)
+    }
     return { action: 'deny' }
   })
 

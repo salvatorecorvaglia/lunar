@@ -228,6 +228,9 @@ export function FileList({
       className="flex h-full flex-col overflow-hidden outline-none"
       tabIndex={0}
       onKeyDown={handleListKeyDown}
+      role="listbox"
+      aria-label="File list"
+      aria-multiselectable="true"
     >
       {/* Header */}
       <div className="flex items-center border-b border-border/60 bg-muted/20 text-[11px] font-medium text-muted-foreground/80 no-select">

@@ -18,24 +18,22 @@ import { PromptDialog } from '@/components/common/PromptDialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 export function SftpManager() {
-  const {
-    localPath,
-    remotePath,
-    localSelection,
-    remoteSelection,
-    sftpSessionId,
-    setLocalPath,
-    setRemotePath,
-    toggleLocalSelection,
-    toggleRemoteSelection,
-    setSftpSessionId,
-    setLocalSelection,
-    setRemoteSelection,
-    showHiddenFiles,
-    toggleHiddenFiles
-  } = useSftpStore()
+  const localPath = useSftpStore((s) => s.localPath)
+  const remotePath = useSftpStore((s) => s.remotePath)
+  const localSelection = useSftpStore((s) => s.localSelection)
+  const remoteSelection = useSftpStore((s) => s.remoteSelection)
+  const sftpSessionId = useSftpStore((s) => s.sftpSessionId)
+  const setLocalPath = useSftpStore((s) => s.setLocalPath)
+  const setRemotePath = useSftpStore((s) => s.setRemotePath)
+  const toggleLocalSelection = useSftpStore((s) => s.toggleLocalSelection)
+  const toggleRemoteSelection = useSftpStore((s) => s.toggleRemoteSelection)
+  const setSftpSessionId = useSftpStore((s) => s.setSftpSessionId)
+  const setLocalSelection = useSftpStore((s) => s.setLocalSelection)
+  const setRemoteSelection = useSftpStore((s) => s.setRemoteSelection)
+  const showHiddenFiles = useSftpStore((s) => s.showHiddenFiles)
+  const toggleHiddenFiles = useSftpStore((s) => s.toggleHiddenFiles)
 
-  const { sessions } = useTerminalStore()
+  const sessions = useTerminalStore((s) => s.sessions)
   const invalidateSftp = useInvalidateSftp()
   const invalidateLocal = useInvalidateLocalDir()
   const [splitRatio, setSplitRatio] = useState(0.5)
@@ -76,7 +74,7 @@ export function SftpManager() {
     error: localError
   } = useLocalDirectory(localPath)
 
-  const { addTransfer } = useTransferStore()
+  const addTransfer = useTransferStore((s) => s.addTransfer)
 
   // Drag-and-drop: remote -> local (download)
   const handleLocalDrop = useCallback(
@@ -167,7 +165,7 @@ export function SftpManager() {
   const [deleteTarget, setDeleteTarget] = useState<FileEntry | null>(null)
   const [mkdirOpen, setMkdirOpen] = useState(false)
 
-  const { setPreviewFile } = useSftpStore()
+  const setPreviewFile = useSftpStore((s) => s.setPreviewFile)
 
   // Preview remote file on double-click
   const handleRemoteFileOpen = useCallback(
@@ -274,14 +272,28 @@ export function SftpManager() {
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     setResizing(true)
-    const onMouseMove = (e: MouseEvent) => {
+    let rafId: number | null = null
+    let pending: number | null = null
+    const flush = (): void => {
+      rafId = null
+      if (pending !== null) {
+        setSplitRatio(pending)
+        pending = null
+      }
+    }
+    const onMouseMove = (e: MouseEvent): void => {
       if (!containerRef.current) return
       const rect = containerRef.current.getBoundingClientRect()
       const ratio = (e.clientX - rect.left) / rect.width
-      setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)))
+      pending = Math.max(0.2, Math.min(0.8, ratio))
+      if (rafId === null) rafId = requestAnimationFrame(flush)
     }
-    const onMouseUp = () => {
+    const onMouseUp = (): void => {
       setResizing(false)
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+        flush()
+      }
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
       document.body.style.cursor = ''

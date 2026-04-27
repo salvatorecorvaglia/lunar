@@ -273,7 +273,11 @@ class SftpManager {
     const cleanupOnAbort = async (): Promise<void> => {
       readStream.destroy()
       writeStream.destroy()
-      await unlink(localPath).catch(() => undefined)
+      await unlink(localPath).catch((err: NodeJS.ErrnoException) => {
+        if (err.code !== 'ENOENT') {
+          log.warn(`[SFTP] Failed to remove partial download ${localPath}:`, err.message)
+        }
+      })
     }
 
     return new Promise<void>((resolve, reject) => {

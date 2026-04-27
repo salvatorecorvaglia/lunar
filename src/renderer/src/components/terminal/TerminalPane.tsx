@@ -141,10 +141,21 @@ export function TerminalPane({ sessionId }: TerminalPaneProps) {
       }
     })
 
-    // Handle error
+    // Handle error — strip control chars (incl. ESC) so server-side messages can't
+    // smuggle ANSI sequences into the local terminal buffer.
+    const sanitize = (s: string): string => {
+      let out = ''
+      for (let i = 0; i < s.length; i++) {
+        const code = s.charCodeAt(i)
+        const printable =
+          code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127)
+        out += printable ? s[i] : '?'
+      }
+      return out
+    }
     const cleanupError = window.api.ssh.onError((event) => {
       if (event.sessionId === sessionId) {
-        terminal.write(`\r\n\x1b[31m--- Error: ${event.error} ---\x1b[0m\r\n`)
+        terminal.write(`\r\n\x1b[31m--- Error: ${sanitize(event.error)} ---\x1b[0m\r\n`)
       }
     })
 

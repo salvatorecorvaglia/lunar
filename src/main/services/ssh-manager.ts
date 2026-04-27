@@ -1,12 +1,13 @@
 import { Client, type ClientChannel, type ConnectConfig } from 'ssh2'
 import { readFile } from 'fs/promises'
 import { v4 as uuidv4 } from 'uuid'
-import { IPC } from '@shared/constants'
+import { IPC, LIMITS } from '@shared/constants'
 import { emitToRenderer } from './emit'
 import type { SessionStatus } from '@shared/types/terminal'
 import { getDatabase, getSetting, type ConnectionRow } from './database'
 import { retrieveCredential } from './credential-store'
 import { verifyHostKey } from './host-key-store'
+import { withTimeout, TimeoutError } from '../lib/with-timeout'
 import log from '../lib/logger'
 
 interface StreamListeners {
@@ -117,7 +118,7 @@ class SshManager {
       }
     }
 
-    return new Promise((resolve) => {
+    const connectPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
       client.on('ready', () => {
         session.reconnectAttempts = 0
         this.setStatus(session, 'connected')
@@ -209,6 +210,21 @@ class SshManager {
 
       client.connect(connectConfig)
     })
+
+    const timeoutMs = getSetting('ssh.connectTimeoutMs', LIMITS.SSH_CONNECT_TIMEOUT_MS)
+    try {
+      return await withTimeout(connectPromise, timeoutMs, `ssh.connect(${sessionId})`)
+    } catch (err: unknown) {
+      try {
+        client.end()
+      } catch {
+        // ignore
+      }
+      this.sessions.delete(sessionId)
+      const isTimeout = err instanceof TimeoutError
+      const message = err instanceof Error ? err.message : String(err)
+      return { success: false, error: isTimeout ? `Connection timed out after ${timeoutMs}ms` : message }
+    }
   }
 
   private cleanupStreamListeners(session: SshSession): void {
@@ -383,14 +399,25 @@ class SshManager {
         if (settled) return
         settled = true
         try {
+          client.removeAllListeners()
           client.end()
         } catch {
           // ignore
         }
         resolve(result)
       }
-      client.on('ready', () => finish({ ok: true }))
-      client.on('error', (err) => finish({ ok: false, error: err.message }))
+      const timer = setTimeout(
+        () => finish({ ok: false, error: `Connection test timed out after ${LIMITS.SSH_CONNECT_TIMEOUT_MS}ms` }),
+        LIMITS.SSH_CONNECT_TIMEOUT_MS
+      )
+      client.on('ready', () => {
+        clearTimeout(timer)
+        finish({ ok: true })
+      })
+      client.on('error', (err) => {
+        clearTimeout(timer)
+        finish({ ok: false, error: err.message })
+      })
       try {
         client.connect(config)
       } catch (err: unknown) {

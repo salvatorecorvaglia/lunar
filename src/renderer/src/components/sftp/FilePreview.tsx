@@ -47,7 +47,8 @@ const dialogVariants = {
 }
 
 export function FilePreview() {
-  const { previewFile, setPreviewFile } = useSftpStore()
+  const previewFile = useSftpStore((s) => s.previewFile)
+  const setPreviewFile = useSftpStore((s) => s.setPreviewFile)
 
   // Close on Escape
   useEffect(() => {

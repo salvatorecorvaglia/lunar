@@ -45,6 +45,12 @@ class TransferQueue {
       this.queue.find(isDuplicate) || Array.from(this.active.values()).find(isDuplicate)
     if (existing) return existing.id
 
+    if (this.queue.length >= LIMITS.MAX_QUEUED_TRANSFERS) {
+      throw new Error(
+        `Transfer queue is full (${LIMITS.MAX_QUEUED_TRANSFERS} pending). Wait for transfers to complete or cancel some.`
+      )
+    }
+
     const transferId = uuidv4()
     const fileName = basename(type === 'upload' ? localPath : remotePath)
 

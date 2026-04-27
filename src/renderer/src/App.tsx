@@ -13,8 +13,10 @@ import { SftpManager } from '@/components/sftp/SftpManager'
 import { useTransferEventListener } from '@/hooks/use-transfers'
 
 export default function App() {
-  const { theme, activeView, setCommandPaletteOpen } = useUIStore()
-  const { tabOrder } = useTerminalStore()
+  const theme = useUIStore((s) => s.theme)
+  const activeView = useUIStore((s) => s.activeView)
+  const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen)
+  const tabOrder = useTerminalStore((s) => s.tabOrder)
 
   // Wire IPC transfer events into the Zustand store
   useTransferEventListener()

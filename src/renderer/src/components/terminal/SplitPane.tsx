@@ -28,20 +28,35 @@ function SplitContainer({ node }: { node: Extract<PaneNode, { type: 'split' }> }
       isDragging.current = true
       setDragging(true)
 
-      const onMouseMove = (e: MouseEvent) => {
-        if (!isDragging.current || !containerRef.current) return
+      // Throttle ratio updates to one per animation frame to keep dragging
+      // smooth on slower terminals & avoid layout thrash.
+      let rafId: number | null = null
+      let pendingRatio: number | null = null
+      const flush = (): void => {
+        rafId = null
+        if (pendingRatio !== null) {
+          setRatio(pendingRatio)
+          pendingRatio = null
+        }
+      }
 
+      const onMouseMove = (e: MouseEvent): void => {
+        if (!isDragging.current || !containerRef.current) return
         const rect = containerRef.current.getBoundingClientRect()
         const newRatio = isHorizontal
           ? (e.clientX - rect.left) / rect.width
           : (e.clientY - rect.top) / rect.height
-
-        setRatio(Math.max(0.15, Math.min(0.85, newRatio)))
+        pendingRatio = Math.max(0.15, Math.min(0.85, newRatio))
+        if (rafId === null) rafId = requestAnimationFrame(flush)
       }
 
-      const onMouseUp = () => {
+      const onMouseUp = (): void => {
         isDragging.current = false
         setDragging(false)
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId)
+          flush()
+        }
         document.removeEventListener('mousemove', onMouseMove)
         document.removeEventListener('mouseup', onMouseUp)
         document.body.style.cursor = ''

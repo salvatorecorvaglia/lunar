@@ -15,7 +15,12 @@ import { useUIStore } from '@/stores/ui-store'
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false)
-  const { theme, toggleTheme, activeView, setActiveView, toggleSidebar, sidebarOpen } = useUIStore()
+  const theme = useUIStore((s) => s.theme)
+  const toggleTheme = useUIStore((s) => s.toggleTheme)
+  const activeView = useUIStore((s) => s.activeView)
+  const setActiveView = useUIStore((s) => s.setActiveView)
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar)
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen)
 
   const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
 

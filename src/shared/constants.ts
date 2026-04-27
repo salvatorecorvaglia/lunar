@@ -81,5 +81,9 @@ export const LIMITS = {
   /** Hard cap on concurrent SFTP transfers. */
   MAX_CONCURRENT_TRANSFERS: 10,
   /** Per-op SFTP timeout (ms). list/stat/mkdir/rename/delete/read all use this. */
-  SFTP_OP_TIMEOUT_MS: 30_000
+  SFTP_OP_TIMEOUT_MS: 30_000,
+  /** Hard cap on transfers waiting in the queue (excluding in-flight). Protects main process from OOM. */
+  MAX_QUEUED_TRANSFERS: 1_000,
+  /** Per-op SSH connect timeout (ms). Wraps the entire connect promise so renderers never hang. */
+  SSH_CONNECT_TIMEOUT_MS: 60_000
 } as const

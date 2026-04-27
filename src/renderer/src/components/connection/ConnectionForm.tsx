@@ -649,7 +649,12 @@ export function ConnectionForm() {
                     <button type="button" onClick={closeForm} className="btn-ghost">
                       Cancel
                     </button>
-                    <button type="submit" disabled={isSaving} className="btn-primary">
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      aria-busy={isSaving}
+                      className="btn-primary"
+                    >
                       {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                       {isSaving ? 'Saving...' : isEditing ? 'Update' : 'Create'}
                     </button>

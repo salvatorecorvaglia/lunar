@@ -23,6 +23,12 @@ mac:
         - arm64
         - x64
   artifactName: '${name}-${version}.${ext}'
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
 
 win:
   target:
@@ -30,6 +36,10 @@ win:
       arch:
         - x64
   artifactName: '${name}-${version}-setup.${ext}'
+  signtoolOptions:
+    publisherName: Salvatore Corvaglia
+    signingHashAlgorithms:
+      - sha256
 
 nsis:
   oneClick: false
