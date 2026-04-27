@@ -14,7 +14,7 @@ Lunar lets you manage multiple SSH connections, open concurrent terminal session
 - **Auto-Reconnect** — Automatic reconnection with exponential backoff on dropped connections
 - **Auto-Update** — Built-in update mechanism via GitHub releases
 - **Secure Credential Storage** — Passwords and passphrases stored securely, separate from the connection database
-- **Cross-Platform** — macOS, Windows, and Linux
+- **Platform Support** — macOS
 
 ## Getting Started
 
@@ -45,8 +45,6 @@ npm run build
 
 # Package for distribution
 npm run dist:mac
-npm run dist:win
-npm run dist:linux
 ```
 
 ### Type Checking
